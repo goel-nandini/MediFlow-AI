@@ -13,6 +13,8 @@ const doctorRoutes      = require('./routes/doctors');
 const appointmentRoutes = require('./routes/appointments');
 const recordRoutes      = require('./routes/records');
 const dashboardRoutes   = require('./routes/dashboard');
+const promptRoutes      = require('./routes/prompts');
+const triageRoutes      = require('./routes/triage');
 
 // Connect to MongoDB
 connectDB();
@@ -53,6 +55,8 @@ app.use('/api/doctors',      doctorRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/records',      recordRoutes);
 app.use('/api/dashboard',    dashboardRoutes);
+app.use('/api/prompts', promptRoutes);
+app.use('/api/triage', triageRoutes);
 
 // ── Health Check ───────────────────────────────────
 app.get('/api/health', (req, res) => {
