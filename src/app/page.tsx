@@ -645,46 +645,6 @@ function TestimonialsSection() {
   );
 }
 
-// ─── CTA Section ─────────────────────────────────────────────────────────────
-
-function CTASection() {
-  return (
-    <section
-      id="contact"
-      className="mx-4 sm:mx-8 my-8 rounded-3xl py-20 px-8 lg:px-16 text-center max-w-6xl lg:mx-auto
-        bg-gradient-to-r from-primary to-secondary
-        dark:from-[#0f2d42] dark:to-primary"
-    >
-      <h2 className="font-display text-4xl font-bold text-white">
-        Ready to Transform Your Triage?
-      </h2>
-      <p className="text-bgLight text-lg mt-3 max-w-xl mx-auto">
-        Deploy MediFlow AI in your hospital in under 48 hours. Zero workflow
-        disruption.
-      </p>
-      <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-        <a
-          href="#"
-          className="inline-flex items-center justify-center font-bold px-8 py-3 rounded-lg transition-colors duration-200
-            bg-white text-primary hover:bg-bgLight
-            dark:bg-accent dark:text-primary dark:hover:bg-accent/90"
-        >
-          Get Started Free
-        </a>
-        <a
-          href="#"
-          className="inline-flex items-center justify-center border-2 border-white text-white px-8 py-3 rounded-lg hover:bg-white hover:text-primary transition-all duration-200"
-        >
-          Schedule Demo
-        </a>
-      </div>
-      <p className="mt-6 text-white/60 text-xs">
-        ✓ No credit card required&nbsp;&nbsp;✓ HIPAA compliant&nbsp;&nbsp;✓
-        Setup in 48 hours
-      </p>
-    </section>
-  );
-}
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 
@@ -731,7 +691,7 @@ export default function HomePage() {
       <TriageStatusSection />
       <StatsSection />
       <TestimonialsSection />
-      <CTASection />
+
       <Footer />
     </main>
   );
