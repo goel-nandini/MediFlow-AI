@@ -6,6 +6,7 @@ import { Activity, CalendarDays, Droplet, Ruler, Weight, Phone, Mail, MapPin } f
 import { PatientSidebar } from "../../../../components/patient/PatientSidebar";
 import HealthChat from "../../../../components/patient/HealthChat";
 import { authApi } from "../../../../lib/api";
+import { HealthAnalyticsSection } from "../../../../components/patient/HealthAnalyticsSection";
 
 interface UserProfile {
   id?: string;
@@ -150,6 +151,9 @@ export default function PatientDashboardPage() {
                 </div>
               </div>
             </div>
+
+            {/* Health Analytics */}
+            <HealthAnalyticsSection />
 
           </div>
 
