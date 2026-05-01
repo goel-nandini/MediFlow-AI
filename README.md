@@ -237,15 +237,42 @@ npm run dev
 
 ---
 
-🎯 Evaluation Focus (Hackathon)
+## 🎯 Evaluation Focus
 
-This project is designed to excel in:
+### 🔍 Key Strengths
 
-✅ Agentic reasoning
-✅ Workflow orchestration
-✅ System design
-✅ Modularity
-✅ Real-world applicability
-  
+- ✅ **Agentic reasoning**  
+- ✅ **Workflow orchestration**  
+- ✅ **System design**  
+- ✅ **Modularity**  
+- ✅ **Real-world applicability**  
+
+---
+
+## 🌍 Real-World Impact
+
+### 🚀 Outcomes
+
+- 🚀 **Faster triage decisions**  
+- 👩‍⚕️ **Reduced burden on doctors**  
+- ⚡ **Better emergency prioritization**  
+- 📈 **Scalable healthcare automation**  
+
+---
+
+## 🎥 Demo
+
+### 🔗 Resources
+
+- 🔗 **Live App:** *(Add link)*  
+- 📂 **GitHub Repo:** *(Add link)*  
+- 🎬 **Demo Video:** *(Add link)*  
+
+---
+
+## 🧠 Final Note
+
+> **MediFlow AI is not just a chatbot.**  
+> It is a **decision-making system that thinks, reasons, and acts in real workflows.**
   
   
