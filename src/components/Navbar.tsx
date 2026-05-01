@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Activity, Moon, Sun, Menu, X } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
 
@@ -15,6 +16,11 @@ const navLinks = [
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+
+  if (pathname.startsWith("/demo")) {
+    return null;
+  }
 
   return (
     <nav className="sticky top-0 z-50">
