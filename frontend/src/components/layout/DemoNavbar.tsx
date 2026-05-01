@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, Activity, HeartPulse } from "lucide-react";
+import { ChevronLeft, Activity } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMediFlowStore } from "../../store/useMediFlowStore";
 import { ProgressBar } from "../ui/ProgressBar";
@@ -55,15 +55,6 @@ export const DemoNavbar: React.FC<DemoNavbarProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push("/demo/patient/chat")}
-            className="flex items-center gap-1.5 bg-accent/10 hover:bg-accent/20 text-accent px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border border-accent/20"
-          >
-            <HeartPulse size={13} />
-            Health Check
-          </button>
-        </div>
       </div>
 
       {step && totalSteps && (
