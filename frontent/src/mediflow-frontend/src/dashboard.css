@@ -1,0 +1,229 @@
+/* ── Dashboard page styles ── */
+
+/* KPI Cards row */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+.kpi-card {
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.kpi-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.kpi-icon {
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.kpi-trend {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.78rem; font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+.trend-up   { color: var(--success); background: var(--success-bg); }
+.trend-down { color: var(--danger);  background: var(--danger-bg);  }
+.kpi-value {
+  font-size: 2.1rem; font-weight: 800;
+  color: var(--primary);
+  line-height: 1;
+}
+.kpi-label { font-size: 0.82rem; color: var(--text-muted); font-weight: 500; }
+/* colored left bar */
+.kpi-bar {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+}
+
+/* ── Two-column layout ── */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+}
+.three-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+}
+
+/* ── Card header ── */
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid #eef6fb;
+}
+.card-body { padding: 0; }
+
+/* ── Patient table ── */
+.patient-row-emergency { background: #fff8f8 !important; }
+.patient-row-warning   { background: #fffbf0 !important; }
+.priority-dot {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-weight: 600; font-size: 0.8rem;
+}
+
+/* ── Appointment list ── */
+.appt-list { display: flex; flex-direction: column; }
+.appt-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #eef6fb;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.appt-item:last-child { border-bottom: none; }
+.appt-item:hover { background: #f7fbff; }
+.appt-time {
+  text-align: center;
+  min-width: 48px;
+  background: var(--bg-light);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+}
+.appt-time-hour { font-size: 0.9rem; font-weight: 800; color: var(--primary); line-height: 1; }
+.appt-time-min  { font-size: 0.68rem; color: var(--text-muted); }
+.appt-info { flex: 1; }
+.appt-name { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
+.appt-type { font-size: 0.75rem; color: var(--text-muted); }
+
+/* ── Doctor booking cards ── */
+.doctor-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.doctor-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #eef6fb;
+  transition: background 0.15s;
+}
+.doctor-item:last-child { border-bottom: none; }
+.doctor-item:hover { background: #f7fbff; }
+.doctor-info { flex: 1; }
+.doctor-name { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
+.doctor-spec { font-size: 0.75rem; color: var(--text-muted); }
+.doctor-avail {
+  font-size: 0.72rem; font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+}
+.avail-yes { background: var(--success-bg); color: var(--success); }
+.avail-no  { background: #f1f5f9; color: #94a3b8; }
+
+/* ── Medical records list ── */
+.record-list { display: flex; flex-direction: column; gap: 0; }
+.record-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 20px;
+  border-bottom: 1px solid #eef6fb;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.record-item:last-child { border-bottom: none; }
+.record-item:hover { background: #f7fbff; }
+.record-icon {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.record-info { flex: 1; }
+.record-title { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
+.record-sub   { font-size: 0.75rem; color: var(--text-muted); }
+.record-date  { font-size: 0.75rem; color: var(--text-muted); }
+
+/* ── Analytics mini-chart area ── */
+.chart-section {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
+/* ── Quick stats strip ── */
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--bg-soft);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+.qs-item { text-align: center; }
+.qs-val  { font-size: 1.4rem; font-weight: 800; color: var(--primary); line-height: 1; }
+.qs-label{ font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; }
+
+/* Recharts overrides for light theme */
+.recharts-cartesian-grid line { stroke: #e8f4fb; }
+.recharts-text.recharts-label { fill: var(--text-muted) !important; }
+
+/* ── Welcome banner ── */
+.welcome-banner {
+  background: linear-gradient(135deg, var(--primary) 0%, #2d6a96 60%, var(--secondary) 100%);
+  border-radius: var(--radius-xl);
+  padding: 28px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+.welcome-banner::after {
+  content: '';
+  position: absolute;
+  right: -40px; top: -40px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+}
+.welcome-banner::before {
+  content: '';
+  position: absolute;
+  right: 80px; bottom: -60px;
+  width: 150px; height: 150px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+}
+.wb-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+.wb-sub   { font-size: 0.875rem; opacity: 0.8; }
+.wb-stats { display: flex; gap: 24px; position: relative; z-index: 1; }
+.wb-stat-val   { font-size: 1.8rem; font-weight: 900; line-height: 1; color: var(--accent); }
+.wb-stat-label { font-size: 0.72rem; opacity: 0.7; margin-top: 2px; }
+
+@media (max-width: 1280px) {
+  .kpi-grid    { grid-template-columns: repeat(2, 1fr); }
+  .two-col     { grid-template-columns: 1fr; }
+  .chart-section { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  :root { --sidebar-w: 0px; }
+  .kpi-grid { grid-template-columns: 1fr; }
+}
