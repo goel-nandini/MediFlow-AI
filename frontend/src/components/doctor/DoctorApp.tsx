@@ -2,17 +2,17 @@ import { useState } from 'react';
 import DoctorSidebar from './DoctorSidebar';
 import DoctorTopbar from './DoctorTopbar';
 import DoctorDashboard from './DoctorDashboard';
+import AppointmentList from '@/components/appointments/AppointmentList';
 import './index.css';
 import './layout.css';
 
 const PAGE_META = {
-  dashboard:    { title: 'Dashboard',       subtitle: 'Clinical overview & analytics'    },
-  patients:     { title: 'Patients',        subtitle: 'Manage patient records'            },
-  appointments: { title: 'Appointments',    subtitle: 'Schedule & manage appointments'    },
-  records:      { title: 'Medical Records', subtitle: 'Lab reports, prescriptions & more' },
-  doctors:      { title: 'Doctors',         subtitle: 'Staff directory & availability'    },
-  analytics:    { title: 'Analytics',       subtitle: 'Reports & performance metrics'     },
-  settings:     { title: 'Settings',        subtitle: 'System configuration'              },
+  dashboard: { title: 'Dashboard', subtitle: 'Clinical overview & analytics' },
+  appointments: { title: 'Appointments', subtitle: 'Schedule & manage appointments' },
+  records: { title: 'Medical Records', subtitle: 'Lab reports, prescriptions & more' },
+  doctors: { title: 'Doctors', subtitle: 'Staff directory & availability' },
+  analytics: { title: 'Analytics', subtitle: 'Reports & performance metrics' },
+  settings: { title: 'Settings', subtitle: 'System configuration' },
 };
 
 // Placeholder for pages not yet built
@@ -50,10 +50,13 @@ export default function App() {
       <div className="main-layout">
         <DoctorTopbar title={meta.title} subtitle={meta.subtitle} />
 
-        {activePage === 'dashboard'
-          ? <DoctorDashboard />
-          : <div className="main-content"><ComingSoon page={activePage} /></div>
-        }
+        {activePage === 'dashboard' ? (
+          <DoctorDashboard />
+        ) : activePage === 'appointments' ? (
+          <div className="main-content"><AppointmentList /></div>
+        ) : (
+          <div className="main-content"><ComingSoon page={activePage} /></div>
+        )}
       </div>
     </>
   );

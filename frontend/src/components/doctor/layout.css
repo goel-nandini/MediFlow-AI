@@ -188,7 +188,7 @@
   margin-left: var(--sidebar-w);
   padding-top: var(--topbar-h);
   min-height: 100vh;
-  background: var(--bg-light);
+  background: #F4F7FA;
 }
 .main-content {
   padding: 24px 28px;

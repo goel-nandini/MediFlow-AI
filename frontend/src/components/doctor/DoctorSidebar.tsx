@@ -1,16 +1,12 @@
 import {
-  LayoutDashboard, Users, Calendar, FileText, Stethoscope,
+  LayoutDashboard, Calendar, FileText, Stethoscope,
   Settings, Activity, LogOut, ChevronRight
 } from 'lucide-react';
 import './layout.css';
 
 const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard',    id: 'dashboard',    badge: null },
-  { icon: Users,           label: 'Patients',      id: 'patients',     badge: null },
-  { icon: Calendar,        label: 'Appointments',  id: 'appointments', badge: '3'  },
-  { icon: FileText,        label: 'Medical Records', id: 'records',    badge: null },
-  { icon: Stethoscope,     label: 'Doctors',       id: 'doctors',      badge: null },
-  { icon: Activity,        label: 'Analytics',     id: 'analytics',    badge: null },
+  { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard', badge: null },
+  { icon: Calendar, label: 'Appointments', id: 'appointments', badge: '3' },
 ];
 
 export default function Sidebar({ activePage, onNavigate }: { activePage: string; onNavigate: (page: string) => void }) {
@@ -42,16 +38,6 @@ export default function Sidebar({ activePage, onNavigate }: { activePage: string
             {badge && <span className="nav-link-badge">{badge}</span>}
           </button>
         ))}
-
-        <div className="sidebar-nav-label" style={{ marginTop: 12 }}>System</div>
-        <button
-          id="nav-settings"
-          className={`nav-link ${activePage === 'settings' ? 'active' : ''}`}
-          onClick={() => onNavigate('settings')}
-        >
-          <Settings size={18} className="nav-icon" />
-          <span>Settings</span>
-        </button>
       </nav>
 
       {/* User */}
