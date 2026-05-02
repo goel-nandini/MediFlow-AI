@@ -38,7 +38,7 @@ const getAppointments = async (req, res, next) => {
       total,
       page:       Number(page),
       totalPages: Math.ceil(total / limit),
-      data:       appointments,
+      appointments,
     });
   } catch (error) {
     next(error);
@@ -100,7 +100,7 @@ const createAppointment = async (req, res, next) => {
     res.status(201).json({
       success: true,
       message: 'Appointment booked successfully.',
-      data: populated,
+      appointment: populated,
     });
   } catch (error) {
     next(error);

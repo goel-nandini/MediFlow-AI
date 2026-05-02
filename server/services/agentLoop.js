@@ -37,9 +37,9 @@ const triageAgent = async (symptoms, history) => {
   const raw = await callLLM(systemPrompt, userMessage);
   try {
     return JSON.parse(cleanJSON(raw));
-} catch {
+  } catch {
     return { risk: 'NORMAL', confidence: 0.5, reason: raw, keySymptoms: [] };
-}
+  }
 };
 
 // Step 3: Decide action
@@ -58,17 +58,17 @@ const decisionAgent = async (triageResult, symptoms) => {
   const raw = await callLLM(systemPrompt, userMessage);
   try {
     return JSON.parse(cleanJSON(raw));
-} catch {
+  } catch {
     return { action: 'BOOK_APPOINTMENT', recommendation: raw, specialistNeeded: 'general' };
-}
+  }
 };
 
 // MAIN AGENT LOOP
 const runAgentLoop = async (session) => {
   const { symptoms, conversationHistory, questionCount } = session;
-  
+
   // Agent decides: do I have enough info?
-  if (questionCount < 3) {
+  if (questionCount < 6) {
     // Still gathering info
     const question = await questioningAgent(symptoms, conversationHistory);
     return {
@@ -77,11 +77,11 @@ const runAgentLoop = async (session) => {
       done: false
     };
   }
-  
+
   // Enough info — triage now
   const triage = await triageAgent(symptoms, conversationHistory);
   const decision = await decisionAgent(triage, symptoms);
-  
+
   return {
     state: 'DECIDED',
     triage,
@@ -94,15 +94,15 @@ const runAgentLoop = async (session) => {
 const cleanJSON = (raw) => {
   // Remove all markdown code blocks
   let cleaned = raw.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
-  
+
   // Find JSON object within the string
   const firstBrace = cleaned.indexOf('{');
   const lastBrace = cleaned.lastIndexOf('}');
-  
+
   if (firstBrace !== -1 && lastBrace !== -1) {
     cleaned = cleaned.substring(firstBrace, lastBrace + 1);
   }
-  
+
   return cleaned;
 };
 

@@ -48,8 +48,8 @@ dateTime:    { type: String, default: '' },
     // Appointment status
     status: {
       type: String,
-      enum: ['Scheduled', 'Confirmed', 'In Progress', 'Completed', 'Cancelled', 'No Show'],
-      default: 'Scheduled',
+      enum: ['upcoming', 'confirmed', 'Scheduled', 'Confirmed', 'In Progress', 'Completed', 'Cancelled', 'cancelled', 'No Show'],
+      default: 'upcoming',
     },
     // Reason for visit
     reason: {
