@@ -28,7 +28,7 @@ const getAppointments = async (req, res, next) => {
 
     const appointments = await Appointment
       .find(filter)
-      .populate('patient', 'name patientId phone age priority')
+      .populate('patient', 'name patientId phone age priority conditions medicalHistory medications allergies')
       .populate('doctor',  'name specialization')
       .sort({ date: 1, timeSlot: 1 })
       .skip(skip)
@@ -58,7 +58,7 @@ const getTodayAppointments = async (req, res, next) => {
 
     const appointments = await Appointment
       .find({ date: { $gte: start, $lte: end } })
-      .populate('patient', 'name patientId age priority')
+      .populate('patient', 'name patientId age priority conditions medicalHistory medications allergies')
       .populate('doctor',  'name specialization')
       .sort({ timeSlot: 1 });
 
@@ -75,7 +75,7 @@ const getAppointment = async (req, res, next) => {
   try {
     const appt = await Appointment
       .findById(req.params.id)
-      .populate('patient', 'name patientId phone age gender bloodGroup')
+      .populate('patient', 'name patientId phone age gender bloodGroup conditions medicalHistory medications allergies')
       .populate('doctor',  'name specialization phone');
 
     if (!appt) {

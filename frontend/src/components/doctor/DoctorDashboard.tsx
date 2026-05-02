@@ -472,6 +472,15 @@ export default function Dashboard() {
                   <div className="appt-info">
                     <div className="appt-name">{a.patientName || 'Patient'}</div>
                     <div className="appt-type">{a.doctorName ? `Dr. ${a.doctorName.replace('Dr. ', '')}` : 'Doctor'} · {a.reason || 'Consultation'}</div>
+                    {/* Inline history preview */}
+                    {(a.patient?.conditions?.length > 0 || a.patient?.allergies) && (
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {a.patient?.conditions?.slice(0, 2).map((c: string, idx: number) => (
+                          <span key={idx} style={{ background: '#f1f5f9', padding: '1px 6px', borderRadius: 4 }}>{c}</span>
+                        ))}
+                        {a.patient?.allergies && <span style={{ color: '#dc2626' }}>⚠ Allergies</span>}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span className={`badge ${cfg.cls}`}>

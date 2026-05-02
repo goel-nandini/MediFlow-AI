@@ -323,10 +323,16 @@ export default function HealthChat() {
     setPhase("booked");
     pushAI(`Booking your appointment with **${doc.name}**...`);
     try {
+      let patientId = null;
+      try {
+        const u = JSON.parse(localStorage.getItem("mediflow_user") || "{}");
+        if (u?.id) patientId = u.id;
+      } catch { /* ignore */ }
+
       const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
       await appointmentsApi.create({
         doctor: doc._id,
-        patient: null,
+        patient: patientId,
         patientName: userName,
         doctorName: doc.name,
         specialization: doc.specialization,
@@ -335,7 +341,9 @@ export default function HealthChat() {
         timeSlot: "10:00",
         status: "upcoming",
         risk: agentResult?.triage?.risk || "NORMAL",
-        reason: agentResult?.triage?.reason || "AI Triage Referral",
+        reason: (agentResult?.triage?.keySymptoms && agentResult.triage.keySymptoms.length > 0) 
+          ? agentResult.triage.keySymptoms.join(", ") 
+          : (agentResult?.triage?.reason || "AI Triage Referral"),
         priority: agentResult?.triage?.risk === "EMERGENCY" 
           ? "emergency" 
           : agentResult?.triage?.risk === "HIGH"

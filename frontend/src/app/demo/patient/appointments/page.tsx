@@ -8,7 +8,7 @@ import { Card } from "../../../../components/ui/Card";
 import { Badge } from "../../../../components/ui/Badge";
 import { DemoNavbar } from "../../../../components/layout/DemoNavbar";
 import { PatientSidebar } from "../../../../components/patient/PatientSidebar";
-import { appointmentsApi, type Appointment } from "../../../../lib/api";
+import { appointmentsApi, doctorsApi, type Appointment } from "../../../../lib/api";
 
 export default function PatientAppointmentsPage() {
   const router = useRouter();
@@ -18,6 +18,12 @@ export default function PatientAppointmentsPage() {
   const [loading, setLoading]   = useState(true);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [recommendedDoctors, setRecommendedDoctors] = useState<any[]>([]);
+
+  // Search states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [bookingDocId, setBookingDocId] = useState<string | null>(null);
 
   useEffect(() => {
     // Guard: must be logged in
@@ -76,6 +82,69 @@ export default function PatientAppointmentsPage() {
     }
   };
 
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const res = await doctorsApi.getAll({ search: searchQuery });
+      setSearchResults((res as any).data || []);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const bookDoctor = async (doc: any, reason: string) => {
+    setBookingDocId(doc._id);
+    try {
+      let patientId = null;
+      try {
+        const u = JSON.parse(localStorage.getItem("mediflow_user") || "{}");
+        if (u?.id) patientId = u.id;
+      } catch { /* ignore */ }
+
+      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await appointmentsApi.create({
+        doctor: doc._id,
+        patient: patientId,
+        patientName: userName,
+        doctorName: doc.name,
+        specialization: doc.specialization,
+        date: tomorrow,
+        dateTime: tomorrow.toISOString(),
+        timeSlot: "10:00",
+        status: "upcoming",
+        reason: reason,
+        priority: "success",
+      });
+      // Refresh appointments list
+      await loadAppointments();
+      
+      if (reason === "AI Recommended Booking") {
+        const updated = recommendedDoctors.filter((d: any) => d._id !== doc._id);
+        setRecommendedDoctors(updated);
+        localStorage.setItem("mediflow_recommended_doctors", JSON.stringify(updated));
+      } else {
+        // Direct Booking from Search
+        setSearchQuery("");
+        setSearchResults([]);
+      }
+      
+      alert(`Appointment successfully booked with ${doc.name}!`);
+      
+      window.dispatchEvent(new Event("appointmentUpdated"));
+    } catch (err) {
+      console.error("Booking error:", err);
+      alert("Failed to book appointment. Please try again.");
+    } finally {
+      setBookingDocId(null);
+    }
+  };
+
   const handleCancel = async (id: string) => {
     setCancelling(id);
     try {
@@ -109,38 +178,6 @@ export default function PatientAppointmentsPage() {
     return d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
   };
 
-  const [bookingDocId, setBookingDocId] = useState<string | null>(null);
-
-  const bookRecommended = async (doc: any) => {
-    setBookingDocId(doc._id);
-    try {
-      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      await appointmentsApi.create({
-        doctor: doc._id,
-        patientName: userName,
-        doctorName: doc.name,
-        specialization: doc.specialization,
-        date: tomorrow,
-        dateTime: tomorrow.toISOString(),
-        timeSlot: "10:00",
-        status: "upcoming",
-        reason: "AI Recommended Booking",
-        priority: "success",
-      });
-      // Refresh appointments list
-      await loadAppointments();
-      // Remove this doctor from recommendations
-      const updated = recommendedDoctors.filter((d: any) => d._id !== doc._id);
-      setRecommendedDoctors(updated);
-      localStorage.setItem("mediflow_recommended_doctors", JSON.stringify(updated));
-      window.dispatchEvent(new Event("appointmentUpdated"));
-    } catch {
-      // silent fail
-    } finally {
-      setBookingDocId(null);
-    }
-  };
-
   return (
     <>
       <DemoNavbar title="Appointments" />
@@ -159,6 +196,71 @@ export default function PatientAppointmentsPage() {
             <p className="text-secondary text-sm mt-1">
               Manage your upcoming visits and view past consultations.
             </p>
+          </div>
+
+          {/* Search Bar */}
+          <div className="mb-8">
+            <div className="flex gap-2 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search for a specific doctor or specialization..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E2E8F0] focus:outline-none focus:border-primary transition-colors text-black"
+                />
+              </div>
+              <button
+                onClick={handleSearch}
+                disabled={isSearching}
+                className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-[#143A52] transition-colors disabled:opacity-50"
+              >
+                {isSearching ? "Searching..." : "Search"}
+              </button>
+            </div>
+
+            {/* Search Results */}
+            {searchResults.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-[#1B4965] text-lg font-bold mb-4">
+                  🔎 Search Results
+                </h2>
+                <div className="grid grid-cols-1 gap-4">
+                  {searchResults.map((doc: any, i: number) => (
+                    <div key={`search-${i}`} className="bg-white rounded-xl p-4 shadow-sm border border-[#E2E8F0] flex justify-between items-center">
+                      <div>
+                        <p className="font-bold text-[#1B4965] text-[15px]">
+                          {doc.name}
+                        </p>
+                        <p className="text-[#64748B] text-[13px]">
+                          {doc.specialization}
+                        </p>
+                        <p className="text-[#64748B] text-[13px]">
+                          ⭐ {doc.rating} · {doc.isAvailable ? "Available" : "Unavailable"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => bookDoctor(doc, "Direct Booking")}
+                          disabled={bookingDocId === doc._id}
+                          className="text-[13px] bg-[#1B4965] text-white px-4 py-1.5 rounded-full font-bold hover:bg-[#143A52] transition-colors disabled:opacity-50"
+                        >
+                          {bookingDocId === doc._id ? "Booking..." : "Book Appointment"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {searchQuery && !isSearching && searchResults.length === 0 && (
+              <div className="text-center p-4 bg-white rounded-xl border border-[#E2E8F0] text-secondary">
+                No doctors found matching "{searchQuery}"
+              </div>
+            )}
           </div>
 
           {recommendedDoctors.length > 0 ? (
@@ -188,7 +290,7 @@ export default function PatientAppointmentsPage() {
                         AI Pick #{i + 1}
                       </span>
                       <button
-                        onClick={() => bookRecommended(doc)}
+                        onClick={() => bookDoctor(doc, "AI Recommended Booking")}
                         disabled={bookingDocId === doc._id}
                         className="text-[13px] bg-[#1B4965] text-white px-4 py-1.5 rounded-full font-bold hover:bg-[#143A52] transition-colors disabled:opacity-50"
                       >

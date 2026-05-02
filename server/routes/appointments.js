@@ -6,13 +6,13 @@ const {
 } = require('../controllers/appointmentController');
 const { protect } = require('../middleware/auth');
 
-router.use(protect);
+// router.use(protect); // Removed global protect to allow guest chatbot booking
 
-router.get('/today',  getTodayAppointments);  // GET /api/appointments/today
-router.get('/',       getAppointments);        // GET /api/appointments
-router.get('/:id',    getAppointment);
-router.post('/',      createAppointment);
-router.put('/:id',    updateAppointment);
-router.delete('/:id', cancelAppointment);
+router.get('/today',  protect, getTodayAppointments);
+router.get('/',       protect, getAppointments);
+router.get('/:id',    protect, getAppointment);
+router.post('/',      createAppointment); // Unprotected for chatbot
+router.put('/:id',    protect, updateAppointment);
+router.delete('/:id', protect, cancelAppointment);
 
 module.exports = router;
