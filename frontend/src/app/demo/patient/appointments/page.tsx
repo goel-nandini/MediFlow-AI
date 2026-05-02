@@ -17,6 +17,7 @@ export default function PatientAppointmentsPage() {
   const [userName, setUserName] = useState("Patient");
   const [loading, setLoading]   = useState(true);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [recommendedDoctors, setRecommendedDoctors] = useState<any[]>([]);
 
   useEffect(() => {
     // Guard: must be logged in
@@ -30,7 +31,34 @@ export default function PatientAppointmentsPage() {
     } catch { /* ignore */ }
 
     loadAppointments();
+
+    // Refetch whenever any page dispatches the "appointmentUpdated" event
+    window.addEventListener("appointmentUpdated", loadAppointments);
+    return () => {
+      window.removeEventListener("appointmentUpdated", loadAppointments);
+    };
   }, [router]);
+
+  useEffect(() => {
+    const loadRecommended = () => {
+      try {
+        const stored = localStorage.getItem("mediflow_recommended_doctors");
+        if (stored) {
+          setRecommendedDoctors(JSON.parse(stored));
+        } else {
+          setRecommendedDoctors([]);
+        }
+      } catch {
+        setRecommendedDoctors([]);
+      }
+    };
+
+    loadRecommended();
+    window.addEventListener("recommendedDoctorsUpdated", loadRecommended);
+    return () => {
+      window.removeEventListener("recommendedDoctorsUpdated", loadRecommended);
+    };
+  }, []);
 
   const loadAppointments = async () => {
     setLoading(true);
@@ -66,8 +94,12 @@ export default function PatientAppointmentsPage() {
     }
   };
 
-  const upcoming = appointments.filter(a => a.status === "upcoming" || a.status === "confirmed");
-  const previous = appointments.filter(a => a.status === "completed" || a.status === "cancelled");
+  const upcoming = appointments.filter(a =>
+    ["upcoming", "confirmed", "Scheduled", "Confirmed", "In Progress"].includes(a.status)
+  );
+  const previous = appointments.filter(a =>
+    ["completed", "cancelled", "Completed", "Cancelled", "No Show"].includes(a.status)
+  );
   const displayed = tab === "upcoming" ? upcoming : previous;
 
   const formatDateTime = (dt?: string) => {
@@ -75,6 +107,38 @@ export default function PatientAppointmentsPage() {
     const d = new Date(dt);
     if (isNaN(d.getTime())) return dt; // raw string fallback
     return d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+  };
+
+  const [bookingDocId, setBookingDocId] = useState<string | null>(null);
+
+  const bookRecommended = async (doc: any) => {
+    setBookingDocId(doc._id);
+    try {
+      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await appointmentsApi.create({
+        doctor: doc._id,
+        patientName: userName,
+        doctorName: doc.name,
+        specialization: doc.specialization,
+        date: tomorrow,
+        dateTime: tomorrow.toISOString(),
+        timeSlot: "10:00",
+        status: "upcoming",
+        reason: "AI Recommended Booking",
+        priority: "success",
+      });
+      // Refresh appointments list
+      await loadAppointments();
+      // Remove this doctor from recommendations
+      const updated = recommendedDoctors.filter((d: any) => d._id !== doc._id);
+      setRecommendedDoctors(updated);
+      localStorage.setItem("mediflow_recommended_doctors", JSON.stringify(updated));
+      window.dispatchEvent(new Event("appointmentUpdated"));
+    } catch {
+      // silent fail
+    } finally {
+      setBookingDocId(null);
+    }
   };
 
   return (
@@ -96,6 +160,58 @@ export default function PatientAppointmentsPage() {
               Manage your upcoming visits and view past consultations.
             </p>
           </div>
+
+          {recommendedDoctors.length > 0 ? (
+            <div className="mb-8">
+              <h2 className="text-[#1B4965] text-lg font-bold mb-4">
+                🩺 Recommended Doctors
+              </h2>
+              <p className="text-[#64748B] text-sm mb-4">
+                Based on your recent AI assessment
+              </p>
+              <div className="grid grid-cols-1 gap-4">
+                {recommendedDoctors.map((doc: any, i: number) => (
+                  <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-[#E2E8F0] flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-[#1B4965] text-[15px]">
+                        {doc.name}
+                      </p>
+                      <p className="text-[#64748B] text-[13px]">
+                        {doc.specialization}
+                      </p>
+                      <p className="text-[#64748B] text-[13px]">
+                        ⭐ {doc.rating} ·{doc.isAvailable ? " Available" : " Unavailable"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[12px] bg-[#CAE9FF] text-[#1B4965] px-3 py-1 rounded-full font-semibold">
+                        AI Pick #{i + 1}
+                      </span>
+                      <button
+                        onClick={() => bookRecommended(doc)}
+                        disabled={bookingDocId === doc._id}
+                        className="text-[13px] bg-[#1B4965] text-white px-4 py-1.5 rounded-full font-bold hover:bg-[#143A52] transition-colors disabled:opacity-50"
+                      >
+                        {bookingDocId === doc._id ? "Booking..." : "Book Appointment"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="mb-8 bg-white rounded-xl p-6 shadow-sm border border-[#E2E8F0] text-center">
+              <p className="text-[#64748B] text-[14px] mb-4">
+                No recommendations yet
+              </p>
+              <button
+                onClick={() => router.push("/demo/patient/ai-assistant")}
+                className="bg-[#1B4965] text-white px-5 py-2 rounded-xl text-[14px] font-bold"
+              >
+                Talk to AI Assistant
+              </button>
+            </div>
+          )}
 
           <Card padding="none" className="overflow-hidden animate-fadeUp">
             {/* Tabs */}
@@ -151,6 +267,11 @@ export default function PatientAppointmentsPage() {
                               </span>
                             )}
                           </div>
+                          {apt.reason && (
+                            <p className="text-xs text-primary/50 mt-2 italic">
+                              Reason: {apt.reason}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -165,20 +286,13 @@ export default function PatientAppointmentsPage() {
                         >
                           {apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
                         </Badge>
-                        {tab === "upcoming" && apt.status !== "cancelled" ? (
+                        {tab === "upcoming" && apt.status !== "cancelled" && (
                           <button
                             onClick={() => handleCancel(apt._id)}
                             disabled={cancelling === apt._id}
                             className="text-xs font-bold text-danger hover:underline disabled:opacity-50"
                           >
                             {cancelling === apt._id ? "Cancelling…" : "Cancel Appointment"}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => router.push("/demo/patient/chat")}
-                            className="text-xs font-bold border border-primary text-primary px-4 py-1.5 rounded-full hover:bg-bgLight transition-colors"
-                          >
-                            Book Again
                           </button>
                         )}
                       </div>

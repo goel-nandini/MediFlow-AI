@@ -68,12 +68,46 @@ export default function HealthChat() {
     setInput("");
     setShowAttachMenu(false);
 
-    // ── YES to book appointment ──
-    if (doctors.length > 0 && ["yes", "yes please", "book", "confirm", "ok", "sure", "haan", "ha"].includes(val.toLowerCase())) {
-      pushUser(val);
-      const topDoctor = doctors[0];
-      handleBook(topDoctor);
-      return;
+    // ── YES / NO to book appointment ──
+    if (doctors.length > 0) {
+      const isYes = ["yes", "yes please", "book", "confirm", "ok", "sure", "haan", "ha"]
+        .includes(val.toLowerCase());
+
+      const isNo = ["no", "nahi", "nope", "cancel", "skip", "later", "nhi"]
+        .includes(val.toLowerCase());
+
+      if (isYes) {
+        pushUser(val);
+        const topDoctor = doctors[0];
+        handleBook(topDoctor);
+        return;
+      }
+
+      if (isNo) {
+        pushUser(val);
+        setDoctors([]);
+        pushAI(`No problem! Here are my top recommendations based on availability and specialization. You can book anytime from the Appointments page.`);
+
+        // Show top 3 doctors sorted by rating
+        const sorted = [...doctors].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        const top3 = sorted.slice(0, 3);
+
+        localStorage.setItem("mediflow_recommended_doctors", JSON.stringify(top3));
+        window.dispatchEvent(new Event("recommendedDoctorsUpdated"));
+
+        // Display as text recommendation
+        top3.forEach((doc, i) => {
+          setTimeout(() => {
+            pushAI(`${i + 1}. **${doc.name}** — ${doc.specialization}\n⭐ Rating: ${doc.rating} · Available: ${(doc as any).isAvailable ? "Yes" : "No"}`);
+          }, (i + 1) * 600);
+        });
+
+        setTimeout(() => {
+          pushAI(`Visit the Appointments page to book with any of these doctors at your convenience.`);
+          setPhase("result");
+        }, top3.length * 600 + 600);
+        return;
+      }
     }
 
     pushUser(val);
@@ -146,6 +180,8 @@ export default function HealthChat() {
             ? "MEDIUM"
             : "LOW";
 
+      const now = new Date().toISOString();
+
       const historyEntry = {
         riskLevel: normalizedRisk,
         confidence: (result.triage?.confidence ?? 0) / 100,
@@ -157,9 +193,21 @@ export default function HealthChat() {
           : [],
         symptoms: result.triage?.keySymptoms?.join(", ") ?? "",
         appointmentBooked: false,
+        createdAt: now,
+        date: now,
       };
 
-      localStorage.setItem("mediflow_health_history", JSON.stringify([historyEntry]));
+      // Accumulate — keep all past sessions, newest first
+      const existing: any[] = [];
+      try {
+        const stored = localStorage.getItem("mediflow_health_history");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) existing.push(...parsed);
+        }
+      } catch {}
+      existing.unshift(historyEntry); // add newest first
+      localStorage.setItem("mediflow_health_history", JSON.stringify(existing));
       window.dispatchEvent(new Event("healthHistoryUpdated"));
     } catch { }
 
@@ -181,20 +229,61 @@ export default function HealthChat() {
 
   const fetchDoctors = async (specialization: string) => {
     try {
+      // The AI often returns compound values like "neurologist or orthopedic specialist"
+      // Split into individual keywords and try each
       const specMap: Record<string, string> = {
         "cardiology": "cardiologist",
+        "cardiologist": "cardiologist",
         "neurology": "neurologist",
+        "neurologist": "neurologist",
         "pulmonology": "pulmonologist",
+        "pulmonologist": "pulmonologist",
         "dermatology": "dermatologist",
+        "dermatologist": "dermatologist",
         "orthopedics": "orthopedic",
+        "orthopedic": "orthopedic",
         "general medicine": "general",
+        "general physician": "general",
         "general": "general",
       };
-      const mapped = specMap[specialization.toLowerCase()] || specialization.toLowerCase();
-      const res = await doctorsApi.getAll({ specialization: mapped });
-      const list = (res as any).data || [];
-      if (list.length > 0) {
-        setDoctors(list);
+
+      // Extract individual keywords from compound phrases
+      const keywords = specialization
+        .toLowerCase()
+        .split(/\s+(?:or|and|\/)\s+|,\s*/)
+        .map(s => s.replace(/\s*specialist\s*/g, "").trim())
+        .filter(Boolean);
+
+      let allDocs: Doctor[] = [];
+
+      // Try each keyword
+      for (const kw of keywords) {
+        const mapped = specMap[kw] || kw;
+        try {
+          const res = await doctorsApi.getAll({ specialization: mapped });
+          const docs = (res as any).data || [];
+          allDocs.push(...docs);
+        } catch { /* skip failed queries */ }
+      }
+
+      // Deduplicate by _id
+      const seen = new Set<string>();
+      allDocs = allDocs.filter(d => {
+        if (seen.has(d._id)) return false;
+        seen.add(d._id);
+        return true;
+      });
+
+      // Fallback: if no matches, fetch ALL available doctors
+      if (allDocs.length === 0) {
+        try {
+          const res = await doctorsApi.getAll();
+          allDocs = (res as any).data || [];
+        } catch { /* ignore */ }
+      }
+
+      if (allDocs.length > 0) {
+        setDoctors(allDocs);
         setPhase("doctors");
         pushAI(`Based on your symptoms, I recommend seeing a **${specialization}** specialist. Here are the available doctors:`);
         setTimeout(() => {
@@ -234,15 +323,17 @@ export default function HealthChat() {
     setPhase("booked");
     pushAI(`Booking your appointment with **${doc.name}**...`);
     try {
+      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
       await appointmentsApi.create({
         doctor: doc._id,
         patient: null,
         patientName: userName,
         doctorName: doc.name,
         specialization: doc.specialization,
-        date: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        date: tomorrow,
+        dateTime: tomorrow.toISOString(),
         timeSlot: "10:00",
-        status: "Scheduled",
+        status: "upcoming",
         reason: agentResult?.triage?.reason || "AI Triage Referral",
         priority: agentResult?.triage?.risk === "EMERGENCY" ? "emergency" : "success",
       });
@@ -260,6 +351,18 @@ export default function HealthChat() {
             history[0].bookedTime = new Date(
               Date.now() + 24 * 60 * 60 * 1000
             ).toLocaleDateString();
+            history[0].assignedDoctor = {
+              id: doc._id,
+              name: doc.name,
+              specialization: doc.specialization,
+              rating: doc.rating,
+              phone: doc.phone || "",
+              isAvailable: doc.isAvailable,
+            };
+            history[0].appointmentSource = "chatbot";
+            history[0].appointmentDate = new Date(
+              Date.now() + 24 * 60 * 60 * 1000
+            ).toISOString();
             localStorage.setItem("mediflow_health_history", JSON.stringify(history));
             window.dispatchEvent(new Event("healthHistoryUpdated"));
           }
@@ -267,6 +370,10 @@ export default function HealthChat() {
       } catch { }
 
       window.dispatchEvent(new Event("appointmentUpdated"));
+
+      // Clear recommendations after booking
+      localStorage.removeItem("mediflow_recommended_doctors");
+      window.dispatchEvent(new Event("recommendedDoctorsUpdated"));
     } catch {
       pushAI(`❌ Booking failed. Please try again from the Appointments page.`);
       setPhase("doctors");
@@ -348,6 +455,26 @@ export default function HealthChat() {
               <span className="w-1.5 h-1.5 rounded-full bg-[#8696A0] animate-bounce" style={{ animationDelay: "0ms" }} />
               <span className="w-1.5 h-1.5 rounded-full bg-[#8696A0] animate-bounce" style={{ animationDelay: "150ms" }} />
               <span className="w-1.5 h-1.5 rounded-full bg-[#8696A0] animate-bounce" style={{ animationDelay: "300ms" }} />
+            </div>
+          </div>
+        )}
+
+        {/* Emergency alert */}
+        {agentResult?.triage?.risk?.toLowerCase().includes("emergency") && (
+          <div className="flex justify-start mt-2">
+            <div className="bg-red-50 border-l-4 border-red-600 rounded-lg p-4 shadow-sm w-[85%]">
+              <h4 className="font-bold text-red-700 text-[15px] flex items-center gap-2 mb-2">
+                🚨 EMERGENCY DETECTED
+              </h4>
+              <p className="text-red-600 text-[13px] mb-3">
+                Your symptoms indicate a medical emergency. Please seek immediate help.
+              </p>
+              <a
+                href="tel:108"
+                className="flex items-center justify-center gap-2 bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-[14px]"
+              >
+                📞 Call 108 Emergency
+              </a>
             </div>
           </div>
         )}
