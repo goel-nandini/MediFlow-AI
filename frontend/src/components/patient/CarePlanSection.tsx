@@ -17,6 +17,8 @@ interface CarePlan {
   actions: string[];
   followUp: string;
   reason?: string;
+  appointmentBooked?: boolean;
+  bookedDoctor?: string;
 }
 
 /* ── default empty-state plan ── */
@@ -35,17 +37,17 @@ const DEFAULT_PLAN: CarePlan = {
 };
 
 const riskConfig = {
-  LOW:    { label: "Low Risk",    border: "border-l-emerald-500", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: <CheckCircle size={16} />, step: "border-emerald-500" },
-  MEDIUM: { label: "Medium Risk", border: "border-l-amber-500",   badge: "bg-amber-50 text-amber-700 border-amber-200",       icon: <AlertTriangle size={16} />, step: "border-amber-500"   },
-  HIGH:   { label: "High Risk",   border: "border-l-red-500",     badge: "bg-red-50 text-red-700 border-red-200",             icon: <ShieldAlert size={16} />,    step: "border-red-500"    },
+  LOW: { label: "Low Risk", border: "border-l-emerald-500", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: <CheckCircle size={16} />, step: "border-emerald-500" },
+  MEDIUM: { label: "Medium Risk", border: "border-l-amber-500", badge: "bg-amber-50 text-amber-700 border-amber-200", icon: <AlertTriangle size={16} />, step: "border-amber-500" },
+  HIGH: { label: "High Risk", border: "border-l-red-500", badge: "bg-red-50 text-red-700 border-red-200", icon: <ShieldAlert size={16} />, step: "border-red-500" },
 };
 
 function buildPlanFromHistory(record: Record<string, unknown>): CarePlan {
   const risk = (record.riskLevel as string || "").toLowerCase();
   const normalizedRisk: "LOW" | "MEDIUM" | "HIGH" =
     risk.includes("high") || risk.includes("critical") ? "HIGH"
-    : risk.includes("moderate") || risk.includes("medium")   ? "MEDIUM"
-    : "LOW";
+      : risk.includes("moderate") || risk.includes("medium") ? "MEDIUM"
+        : "LOW";
 
   const suggestions = (record.suggestions as string[]) || [];
 
@@ -61,12 +63,16 @@ function buildPlanFromHistory(record: Record<string, unknown>): CarePlan {
       "Avoid self-medicating without professional advice",
       "Seek emergency care if symptoms worsen suddenly",
     ],
-    followUp: normalizedRisk === "HIGH"
-      ? "Seek medical attention immediately or within the next 24 hours."
-      : normalizedRisk === "MEDIUM"
-      ? "Book an appointment within the next 2–3 days."
-      : "Schedule a routine check-up within the next 1–2 weeks.",
+    followUp: record.appointmentBooked
+      ? `✅ Appointment booked with ${record.bookedDoctor} (${record.bookedSpecialization}) on ${record.bookedTime}.`
+      : normalizedRisk === "HIGH"
+        ? "Seek medical attention immediately or within the next 24 hours."
+        : normalizedRisk === "MEDIUM"
+          ? "Book an appointment within the next 2–3 days."
+          : "Schedule a routine check-up within the next 1–2 weeks.",
     reason: (record.severity as string) || undefined,
+    appointmentBooked: record.appointmentBooked as boolean,
+    bookedDoctor: record.bookedDoctor as string,
   };
 }
 
@@ -156,9 +162,9 @@ export function CarePlanSection() {
             </span>
             {hasData && (
               <p className="text-[13px] text-[#64748B]">
-                {plan.risk === "HIGH"   ? "Requires immediate medical attention." :
-                 plan.risk === "MEDIUM" ? "Monitor closely and consult a doctor soon." :
-                                         "Manageable with self-care and routine follow-up."}
+                {plan.risk === "HIGH" ? "Requires immediate medical attention." :
+                  plan.risk === "MEDIUM" ? "Monitor closely and consult a doctor soon." :
+                    "Manageable with self-care and routine follow-up."}
               </p>
             )}
           </div>
@@ -185,13 +191,20 @@ export function CarePlanSection() {
         {/* Step 5 — Follow-up Plan */}
         <StepCard step={5} icon={<CalendarClock size={17} />} title="Follow-up Plan" isLast>
           <p className="text-[#475569] text-[14px] mb-4 leading-relaxed">{plan.followUp}</p>
-          <button
-            onClick={() => router.push("/demo/patient/appointments")}
-            className="flex items-center gap-2 bg-[#1B4965] text-white text-[14px] font-bold px-5 py-3 rounded-xl hover:bg-[#163d52] transition-colors shadow-sm"
-          >
-            <CalendarClock size={16} />
-            Book Appointment
-          </button>
+          {plan.appointmentBooked ? (
+            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[14px] font-bold px-5 py-3 rounded-xl">
+              <CheckCircle size={16} />
+              Appointment Booked with {plan.bookedDoctor}!
+            </div>
+          ) : (
+            <button
+              onClick={() => router.push("/demo/patient/appointments")}
+              className="flex items-center gap-2 bg-[#1B4965] text-white text-[14px] font-bold px-5 py-3 rounded-xl hover:bg-[#163d52] transition-colors shadow-sm"
+            >
+              <CalendarClock size={16} />
+              Book Appointment
+            </button>
+          )}
         </StepCard>
 
       </div>

@@ -6,14 +6,19 @@ const AppointmentSchema = new mongoose.Schema(
     patient: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Patient',
-      required: true,
+      required: false,
     },
     // Reference to doctor
     doctor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Doctor',
-      required: true,
+      required: false,
     },
+    // For AI triage bookings (no ObjectId available)
+patientName: { type: String, default: '' },
+doctorName:  { type: String, default: '' },
+specialization: { type: String, default: '' },
+dateTime:    { type: String, default: '' },
     // Appointment datetime
     date: {
       type: Date,

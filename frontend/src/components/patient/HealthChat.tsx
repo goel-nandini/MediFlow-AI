@@ -8,11 +8,11 @@ import { triageApi, doctorsApi, appointmentsApi, type AgentResult, type Doctor }
 interface Message { role: "ai" | "user"; text: string; image?: string; }
 
 type Phase =
-  | "chat"         
-  | "result"       
-  | "doctors"      
-  | "booked"       
-  | "error";       
+  | "chat"
+  | "result"
+  | "doctors"
+  | "booked"
+  | "error";
 
 function riskColor(risk: string): string {
   const r = risk?.toLowerCase() || "";
@@ -24,17 +24,17 @@ function riskColor(risk: string): string {
 }
 
 export default function HealthChat() {
-  const [messages, setMessages]     = useState<Message[]>([]);
-  const [input, setInput]           = useState("");
-  const [typing, setTyping]         = useState(false);
-  const [phase, setPhase]           = useState<Phase>("chat");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const [phase, setPhase] = useState<Phase>("chat");
 
-  const [sessionId, setSessionId]   = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [agentResult, setAgentResult] = useState<AgentResult | null>(null);
-  const [doctors, setDoctors]       = useState<Doctor[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [bookingDoc, setBookingDoc] = useState<Doctor | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
-  const [errorMsg, setErrorMsg]     = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   const [showAttachMenu, setShowAttachMenu] = useState(false);
 
   const isFirstMessage = useRef(true);
@@ -67,6 +67,15 @@ export default function HealthChat() {
     if (!val || typing || phase !== "chat") return;
     setInput("");
     setShowAttachMenu(false);
+
+    // ── YES to book appointment ──
+    if (doctors.length > 0 && ["yes", "yes please", "book", "confirm", "ok", "sure", "haan", "ha"].includes(val.toLowerCase())) {
+      pushUser(val);
+      const topDoctor = doctors[0];
+      handleBook(topDoctor);
+      return;
+    }
+
     pushUser(val);
     setTyping(true);
 
@@ -91,19 +100,18 @@ export default function HealthChat() {
       setPhase("error");
     }
   };
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setShowAttachMenu(false);
-    
+
     // Simulate reading image
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
       pushUser("Uploaded an image for analysis.", result);
       setTyping(true);
-      
+
       // Fake AI response to image
       setTimeout(() => {
         setTyping(false);
@@ -114,43 +122,158 @@ export default function HealthChat() {
     reader.readAsDataURL(file);
   };
 
+  // const handleDone = (result: AgentResult) => {
+  //   setAgentResult(result);
+  //   setPhase("result");
+  //   if (result.decision?.specialistNeeded) {
+  //     fetchDoctors(result.decision.specialistNeeded);
+  //   }
+  // };
+
   const handleDone = (result: AgentResult) => {
     setAgentResult(result);
     setPhase("result");
+
+    try {
+      const risk = result.triage?.risk ?? "LOW";
+      const normalizedRisk =
+        risk.toLowerCase().includes("emergency") ||
+          risk.toLowerCase().includes("high") ||
+          risk.toLowerCase().includes("critical")
+          ? "HIGH"
+          : risk.toLowerCase().includes("moderate") ||
+            risk.toLowerCase().includes("medium")
+            ? "MEDIUM"
+            : "LOW";
+
+      const historyEntry = {
+        riskLevel: normalizedRisk,
+        confidence: (result.triage?.confidence ?? 0) / 100,
+        aiSummary: result.decision?.recommendation ?? result.triage?.reason ?? "",
+        severity: result.triage?.reason ?? "",
+        specialist: result.decision?.specialistNeeded ?? "General Physician",
+        suggestions: result.triage?.keySymptoms
+          ? result.triage.keySymptoms.map((s) => `Monitor: ${s}`)
+          : [],
+        symptoms: result.triage?.keySymptoms?.join(", ") ?? "",
+        appointmentBooked: false,
+      };
+
+      localStorage.setItem("mediflow_health_history", JSON.stringify([historyEntry]));
+      window.dispatchEvent(new Event("healthHistoryUpdated"));
+    } catch { }
+
     if (result.decision?.specialistNeeded) {
       fetchDoctors(result.decision.specialistNeeded);
     }
   };
 
+  // const fetchDoctors = async (specialization: string) => {
+  //   try {
+  //     const res = await doctorsApi.getAll({ specialization });
+  //     setDoctors(res.doctors || []);
+  //     setPhase("doctors");
+  //     pushAI(`Here are available **${specialization}** doctors for you:`);
+  //   } catch {
+  //     setPhase("result");
+  //   }
+  // };
+
   const fetchDoctors = async (specialization: string) => {
     try {
-      const res = await doctorsApi.getAll({ specialization });
-      setDoctors(res.doctors || []);
-      setPhase("doctors");
-      pushAI(`Here are available **${specialization}** doctors for you:`);
+      const specMap: Record<string, string> = {
+        "cardiology": "cardiologist",
+        "neurology": "neurologist",
+        "pulmonology": "pulmonologist",
+        "dermatology": "dermatologist",
+        "orthopedics": "orthopedic",
+        "general medicine": "general",
+        "general": "general",
+      };
+      const mapped = specMap[specialization.toLowerCase()] || specialization.toLowerCase();
+      const res = await doctorsApi.getAll({ specialization: mapped });
+      const list = (res as any).data || [];
+      if (list.length > 0) {
+        setDoctors(list);
+        setPhase("doctors");
+        pushAI(`Based on your symptoms, I recommend seeing a **${specialization}** specialist. Here are the available doctors:`);
+        setTimeout(() => {
+          pushAI(`Would you like me to book an appointment? Reply **Yes** to confirm or select a doctor below.`);
+          setPhase("chat");
+        }, 800);
+      } else {
+        pushAI(`I recommend seeing a **${specialization}** specialist. Please book from the Appointments page.`);
+        setPhase("result");
+      }
     } catch {
       setPhase("result");
     }
   };
 
+  // const handleBook = async (doc: Doctor) => {
+  //   setBookingLoading(true);
+  //   setBookingDoc(doc);
+  //   pushAI(`Booking your appointment with ${doc.name}...`);
+  //   try {
+  //     await appointmentsApi.create({
+  //       doctorId: doc._id, doctorName: doc.name, specialization: doc.specialization,
+  //       patientName: userName, status: "upcoming", reason: agentResult?.triage?.reason || "AI Triage Referral",
+  //     });
+  //     pushAI(`✅ Confirmed! Appointment booked with **${doc.name}**.`);
+  //     setPhase("booked");
+  //   } catch {
+  //     pushAI(`❌ Booking failed.`);
+  //   } finally {
+  //     setBookingLoading(false);
+  //   }
+  // };
+
   const handleBook = async (doc: Doctor) => {
     setBookingLoading(true);
     setBookingDoc(doc);
-    pushAI(`Booking your appointment with ${doc.name}...`);
+    setPhase("booked");
+    pushAI(`Booking your appointment with **${doc.name}**...`);
     try {
       await appointmentsApi.create({
-        doctorId: doc._id, doctorName: doc.name, specialization: doc.specialization,
-        patientName: userName, status: "upcoming", reason: agentResult?.triage?.reason || "AI Triage Referral",
+        doctor: doc._id,
+        patient: null,
+        patientName: userName,
+        doctorName: doc.name,
+        specialization: doc.specialization,
+        date: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        timeSlot: "10:00",
+        status: "Scheduled",
+        reason: agentResult?.triage?.reason || "AI Triage Referral",
+        priority: agentResult?.triage?.risk === "EMERGENCY" ? "emergency" : "success",
       });
-      pushAI(`✅ Confirmed! Appointment booked with **${doc.name}**.`);
-      setPhase("booked");
+      pushAI(`✅ Appointment confirmed with **${doc.name}** (${doc.specialization})!\n⭐ Rating: ${doc.rating} · Fee: ₹${doc.consultationFee}\n📅 Scheduled for tomorrow. Check your Appointments page!`);
+
+      // Update Care Plan
+      try {
+        const stored = localStorage.getItem("mediflow_health_history");
+        if (stored) {
+          const history = JSON.parse(stored);
+          if (history[0]) {
+            history[0].appointmentBooked = true;
+            history[0].bookedDoctor = doc.name;
+            history[0].bookedSpecialization = doc.specialization;
+            history[0].bookedTime = new Date(
+              Date.now() + 24 * 60 * 60 * 1000
+            ).toLocaleDateString();
+            localStorage.setItem("mediflow_health_history", JSON.stringify(history));
+            window.dispatchEvent(new Event("healthHistoryUpdated"));
+          }
+        }
+      } catch { }
+
+      window.dispatchEvent(new Event("appointmentUpdated"));
     } catch {
-      pushAI(`❌ Booking failed.`);
+      pushAI(`❌ Booking failed. Please try again from the Appointments page.`);
+      setPhase("doctors");
     } finally {
       setBookingLoading(false);
     }
   };
-
   const resetChat = () => {
     setMessages([]); setInput(""); setTyping(false); setPhase("chat");
     setSessionId(null); setAgentResult(null); setDoctors([]); setBookingDoc(null);
@@ -178,7 +301,7 @@ export default function HealthChat() {
 
   return (
     <div className="flex flex-col h-full bg-[#EFEAE2] relative" style={{ backgroundImage: 'url("https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png")', backgroundSize: '400px', backgroundBlendMode: 'overlay', backgroundColor: 'rgba(239, 234, 226, 0.95)' }}>
-      
+
       {/* WhatsApp Header */}
       <div className="flex items-center gap-3 px-4 py-3 bg-[#F0F2F5] border-b border-[#D1D7DB] shrink-0">
         <div className="w-10 h-10 rounded-full bg-[#00A884] flex items-center justify-center">
@@ -199,12 +322,11 @@ export default function HealthChat() {
 
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div 
-              className={`max-w-[75%] px-3 py-2 text-[14.5px] leading-relaxed shadow-sm relative ${
-                m.role === "ai"
-                  ? "bg-white text-[#111B21] rounded-lg rounded-tl-none"
-                  : "bg-[#D9FDD3] text-[#111B21] rounded-lg rounded-tr-none"
-              }`}
+            <div
+              className={`max-w-[75%] px-3 py-2 text-[14.5px] leading-relaxed shadow-sm relative ${m.role === "ai"
+                ? "bg-white text-[#111B21] rounded-lg rounded-tl-none"
+                : "bg-[#D9FDD3] text-[#111B21] rounded-lg rounded-tr-none"
+                }`}
             >
               {/* Image attachment */}
               {m.image && (
@@ -212,7 +334,7 @@ export default function HealthChat() {
                   <img src={m.image} alt="Uploaded symptom" className="max-w-full h-auto max-h-48 object-contain" />
                 </div>
               )}
-              
+
               <span className="whitespace-pre-wrap">{m.text}</span>
               <span className="float-right text-[11px] text-[#667781] ml-3 mt-2">{getTime()}</span>
             </div>
@@ -233,14 +355,14 @@ export default function HealthChat() {
         {/* Triage result */}
         {(phase === "result" || phase === "doctors" || phase === "booked") && agentResult?.triage && (
           <div className="flex justify-start mt-2">
-             <div className="bg-white rounded-lg rounded-tl-none p-4 shadow-sm w-[85%] border-l-4 border-[#00A884]">
-               <h4 className="font-bold text-[#111B21] mb-2 flex items-center gap-2"><Activity size={18}/> Triage Report</h4>
-               <p className="text-sm text-[#54656F] mb-1"><strong>Risk:</strong> {agentResult.triage.risk}</p>
-               <p className="text-sm text-[#54656F] mb-1"><strong>Symptoms:</strong> {agentResult.triage.keySymptoms?.join(", ")}</p>
-               {agentResult.decision && (
-                 <p className="text-sm text-[#54656F] mt-2 border-t pt-2"><strong>Plan:</strong> {agentResult.decision.recommendation}</p>
-               )}
-             </div>
+            <div className="bg-white rounded-lg rounded-tl-none p-4 shadow-sm w-[85%] border-l-4 border-[#00A884]">
+              <h4 className="font-bold text-[#111B21] mb-2 flex items-center gap-2"><Activity size={18} /> Triage Report</h4>
+              <p className="text-sm text-[#54656F] mb-1"><strong>Risk:</strong> {agentResult.triage.risk}</p>
+              <p className="text-sm text-[#54656F] mb-1"><strong>Symptoms:</strong> {agentResult.triage.keySymptoms?.join(", ")}</p>
+              {agentResult.decision && (
+                <p className="text-sm text-[#54656F] mt-2 border-t pt-2"><strong>Plan:</strong> {agentResult.decision.recommendation}</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -271,31 +393,31 @@ export default function HealthChat() {
 
       {/* ─── WhatsApp Input Area ─── */}
       <div className="px-4 py-3 bg-[#F0F2F5] flex items-end gap-2 relative shrink-0">
-        
+
         {/* Attachment Menu Popover */}
         {showAttachMenu && (
           <div className="absolute bottom-[60px] left-4 bg-white rounded-2xl shadow-lg p-2 flex flex-col gap-2 z-10 animate-fadeUp">
             <label className="flex items-center gap-3 px-4 py-2 hover:bg-[#F5F6F6] rounded-xl cursor-pointer transition-colors">
-              <div className="w-10 h-10 rounded-full bg-[#BF59CF] flex items-center justify-center"><ImageIcon size={20} color="white"/></div>
+              <div className="w-10 h-10 rounded-full bg-[#BF59CF] flex items-center justify-center"><ImageIcon size={20} color="white" /></div>
               <span className="text-[#111B21] font-medium text-[15px]">Photos & Videos</span>
               <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
             </label>
             <label className="flex items-center gap-3 px-4 py-2 hover:bg-[#F5F6F6] rounded-xl cursor-pointer transition-colors">
-              <div className="w-10 h-10 rounded-full bg-[#D3396D] flex items-center justify-center"><Camera size={20} color="white"/></div>
+              <div className="w-10 h-10 rounded-full bg-[#D3396D] flex items-center justify-center"><Camera size={20} color="white" /></div>
               <span className="text-[#111B21] font-medium text-[15px]">Camera</span>
               <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageUpload} />
             </label>
           </div>
         )}
 
-        <button 
+        <button
           onClick={() => setShowAttachMenu(!showAttachMenu)}
           disabled={inputDisabled}
           className="w-10 h-10 flex items-center justify-center shrink-0 text-[#54656F] hover:bg-[#E9EDEF] rounded-full transition-colors disabled:opacity-50"
         >
           <Paperclip size={24} />
         </button>
-        
+
         <div className="flex-1 bg-white rounded-xl flex items-center px-4 py-2 border border-[#FFFFFF] focus-within:border-[#00A884]">
           <input
             className="flex-1 bg-transparent text-[15px] outline-none text-[#111B21] placeholder-[#8696A0] py-1"
