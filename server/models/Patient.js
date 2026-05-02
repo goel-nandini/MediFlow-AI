@@ -85,10 +85,18 @@ PatientSchema.pre('save', async function () {
     this.password = await bcrypt.hash(this.password, salt);
   }
 
-  // Auto-generate patientId
+  // Auto-generate a unique patientId using timestamp + random suffix
   if (!this.patientId) {
-    const count = await mongoose.model('Patient').countDocuments();
-    this.patientId = `P-${String(count + 1).padStart(3, '0')}`;
+    let unique = false;
+    while (!unique) {
+      const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const candidate = `P-${Date.now().toString(36).toUpperCase()}-${suffix}`;
+      const exists = await mongoose.model('Patient').findOne({ patientId: candidate });
+      if (!exists) {
+        this.patientId = candidate;
+        unique = true;
+      }
+    }
   }
 });
 
