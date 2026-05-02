@@ -264,9 +264,8 @@ npm run dev
 
 ### 🔗 Resources
 
-- 🔗 **Live App:** *(Add link)*  
-- 📂 **GitHub Repo:** *(Add link)*  
-- 🎬 **Demo Video:** *(Add link)*  
+- 🔗 **Live App:** https://medi-flow-ai-gn16.vercel.app/
+- 📂 **GitHub Repo:** https://github.com/Pratibha-Maurya23/MediFlow-AI.git  
 
 ---
 
