@@ -12,33 +12,33 @@ import { useMediFlowStore } from "../../../../store/useMediFlowStore";
 import { authApi } from "../../../../lib/api";
 
 export default function DoctorAuthPage() {
-  const router  = useRouter();
+  const router = useRouter();
   const setRole = useMediFlowStore((state) => state.setRole);
 
   const [mode, setMode] = useState<"login" | "signup">("login");
 
   // Common fields
-  const [email, setEmail]             = useState("");
-  const [password, setPassword]       = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   // Signup fields
-  const [name, setName]                       = useState("");
-  const [phone, setPhone]                     = useState("");
-  const [specialization, setSpecialization]   = useState("");
-  const [qualification, setQualification]     = useState("");
-  const [experience, setExperience]           = useState("");
-  const [department, setDepartment]           = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [specialization, setSpecialization] = useState("");
+  const [qualification, setQualification] = useState("");
+  const [experience, setExperience] = useState("");
+  const [department, setDepartment] = useState("");
   const [consultationFee, setConsultationFee] = useState("");
 
-  const [errors, setErrors]           = useState<Record<string, string>>({});
-  const [loading, setLoading]         = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
   // Auto-redirect if already logged in as doctor
   useEffect(() => {
     try {
       const token = localStorage.getItem("mediflow_doctor_token");
       if (token) router.replace("/demo/doctor");
-    } catch {}
+    } catch { }
   }, [router]);
 
   const handleSubmit = async () => {
@@ -96,7 +96,6 @@ export default function DoctorAuthPage() {
 
   return (
     <>
-      <DemoNavbar showBack backHref="/demo" title="Doctor & Clinic Portal" step={1} totalSteps={1} />
       <PageContainer maxWidth="sm">
         <Card padding="lg" className="mt-8 mb-12 animate-fadeUp">
           <div className="w-16 h-16 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center mx-auto shadow-md">
@@ -107,8 +106,8 @@ export default function DoctorAuthPage() {
             {mode === "login" ? "Physician Sign In" : "Physician Registration"}
           </h2>
           <p className="text-secondary text-sm text-center mt-1 leading-relaxed px-4">
-            {mode === "login" 
-              ? "Enter your credentials to access the MediFlow dashboard." 
+            {mode === "login"
+              ? "Enter your credentials to access the MediFlow dashboard."
               : "Register your professional profile to join MediFlow network."}
           </p>
 
@@ -145,7 +144,7 @@ export default function DoctorAuthPage() {
                   leftIcon={<User size={16} />}
                   required
                 />
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <InputField
                     label="Specialization"

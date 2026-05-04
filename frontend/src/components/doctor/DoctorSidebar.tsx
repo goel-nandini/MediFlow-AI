@@ -8,6 +8,7 @@ import './layout.css';
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard', badge: null },
   { icon: Calendar, label: 'Appointments', id: 'appointments', badge: '3' },
+  { icon: Settings, label: 'My Profile', id: 'profile', badge: null },
 ];
 
 export default function Sidebar({ activePage, onNavigate }: { activePage: string; onNavigate: (page: string) => void }) {

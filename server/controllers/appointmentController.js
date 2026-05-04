@@ -29,7 +29,7 @@ const getAppointments = async (req, res, next) => {
     const appointments = await Appointment
       .find(filter)
       .populate('patient', 'name patientId phone age priority conditions medicalHistory medications allergies')
-      .populate('doctor',  'name specialization')
+      .populate('doctor',  'name specialization consultationFee rating experience')
       .sort({ date: 1, timeSlot: 1 })
       .skip(skip)
       .limit(Number(limit));
@@ -59,7 +59,7 @@ const getTodayAppointments = async (req, res, next) => {
     const appointments = await Appointment
       .find({ date: { $gte: start, $lte: end } })
       .populate('patient', 'name patientId age priority conditions medicalHistory medications allergies')
-      .populate('doctor',  'name specialization')
+      .populate('doctor',  'name specialization consultationFee rating experience')
       .sort({ timeSlot: 1 });
 
     res.json({ success: true, total: appointments.length, data: appointments });
@@ -76,7 +76,7 @@ const getAppointment = async (req, res, next) => {
     const appt = await Appointment
       .findById(req.params.id)
       .populate('patient', 'name patientId phone age gender bloodGroup conditions medicalHistory medications allergies')
-      .populate('doctor',  'name specialization phone');
+      .populate('doctor',  'name specialization phone consultationFee rating experience');
 
     if (!appt) {
       return res.status(404).json({ success: false, message: 'Appointment not found.' });
@@ -133,7 +133,7 @@ const updateAppointment = async (req, res, next) => {
       new: true, runValidators: true,
     })
     .populate('patient', 'name patientId')
-    .populate('doctor',  'name specialization');
+    .populate('doctor',  'name specialization consultationFee rating experience');
 
     if (!appt) {
       return res.status(404).json({ success: false, message: 'Appointment not found.' });

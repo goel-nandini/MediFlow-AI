@@ -31,6 +31,12 @@ const protect = async (req, res, next) => {
       }
     }
 
+    // Fall back to System User (Admin)
+    if (!user) {
+      const User = require('../models/User');
+      user = await User.findById(decoded.id).select('-password');
+    }
+
     if (!user || !user.isActive) {
       return res.status(401).json({
         success: false,

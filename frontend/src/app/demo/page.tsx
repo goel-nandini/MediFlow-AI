@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { User, Stethoscope, CheckCircle } from "lucide-react";
+import { User, Stethoscope, CheckCircle, ShieldCheck } from "lucide-react";
 import { PageContainer } from "../../components/ui/PageContainer";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
@@ -24,9 +24,13 @@ export default function DemoRoleSelection() {
     router.push("/demo/doctor/auth");
   };
 
+  const handleAdminClick = () => {
+    setRole("admin");
+    router.push("/demo/admin/auth");
+  };
+
   return (
     <>
-      <DemoNavbar title="Role Selection" />
       <PageContainer maxWidth="lg" className="flex flex-col items-center py-16 animate-fadeUp">
         <div className="text-center">
           <p className="text-accent font-semibold text-xs tracking-widest uppercase">
@@ -40,7 +44,7 @@ export default function DemoRoleSelection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 w-full max-w-2xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 w-full max-w-5xl mx-auto">
           {/* Patient Card */}
           <Card hover padding="lg" onClick={handlePatientClick} className="relative">
             <div className="w-14 h-14 bg-bgLight rounded-2xl flex items-center justify-center mb-4">
@@ -110,6 +114,42 @@ export default function DemoRoleSelection() {
               handleDoctorClick();
             }}>
               Doctor Dashboard →
+            </Button>
+          </Card>
+
+          {/* Admin Card */}
+          <Card hover padding="lg" onClick={handleAdminClick} className="relative cursor-pointer">
+            <div className="w-14 h-14 bg-bgLight rounded-2xl flex items-center justify-center mb-4">
+              <ShieldCheck className="text-accent" size={28} />
+            </div>
+
+            <div className="absolute top-8 right-8">
+              <span className="bg-success/10 text-success text-[10px] font-bold px-2 py-0.5 rounded-full border border-success/30 uppercase tracking-wide">
+                LIVE DEMO
+              </span>
+            </div>
+
+            <h2 className="font-display text-xl text-primary font-bold mt-4">
+              Enter as Hospital Admin
+            </h2>
+            <p className="text-sm text-secondary mt-2 leading-relaxed">
+              Manage hospital operations, monitor global patient queues, and oversee doctor availability.
+            </p>
+
+            <div className="mt-4 space-y-2">
+              {["Global Analytics", "Doctor Attendance", "Bed Management"].map((feature) => (
+                <div key={feature} className="flex items-center gap-2">
+                  <CheckCircle className="text-accent w-3.5 h-3.5" />
+                  <span className="text-sm text-primary/70">{feature}</span>
+                </div>
+              ))}
+            </div>
+
+            <Button variant="primary" className="w-full mt-6" onClick={(e) => {
+              e.stopPropagation();
+              handleAdminClick();
+            }}>
+              Admin Portal →
             </Button>
           </Card>
         </div>

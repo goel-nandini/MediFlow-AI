@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { StepCard } from "./StepCard";
 import { ActionList } from "./ActionList";
+import { healthHistoryApi } from "@/lib/api";
 
 interface CarePlan {
   summary: string;
@@ -81,12 +82,13 @@ export function CarePlanSection() {
   const [plan, setPlan] = useState<CarePlan>(DEFAULT_PLAN);
   const [hasData, setHasData] = useState(false);
 
-  const loadPlan = () => {
+  const loadPlan = async () => {
     try {
-      const stored = localStorage.getItem("mediflow_health_history");
-      if (stored) {
-        const history: Record<string, unknown>[] = JSON.parse(stored);
-        if (history.length > 0) {
+      const u = JSON.parse(localStorage.getItem("mediflow_user") || "{}");
+      if (u?.id) {
+        const res = await healthHistoryApi.getAll(u.id);
+        const history = res.data?.filter((r: any) => r.type === "assessment");
+        if (history && history.length > 0) {
           setPlan(buildPlanFromHistory(history[0]));
           setHasData(true);
           return;

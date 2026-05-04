@@ -13,9 +13,9 @@ import { appointmentsApi, doctorsApi, type Appointment } from "../../../../lib/a
 export default function PatientAppointmentsPage() {
   const router = useRouter();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [tab, setTab]     = useState<"upcoming" | "previous">("upcoming");
+  const [tab, setTab] = useState<"upcoming" | "previous">("upcoming");
   const [userName, setUserName] = useState("Patient");
-  const [loading, setLoading]   = useState(true);
+  const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [recommendedDoctors, setRecommendedDoctors] = useState<any[]>([]);
 
@@ -69,8 +69,16 @@ export default function PatientAppointmentsPage() {
   const loadAppointments = async () => {
     setLoading(true);
     try {
-      const res = await appointmentsApi.getAll();
-      setAppointments(res.appointments || []);
+      let patientId = null;
+      try {
+        const u = JSON.parse(localStorage.getItem("mediflow_user") || "{}");
+        if (u?.id) patientId = u.id;
+      } catch { /* ignore */ }
+
+      const params = patientId ? { patientId } : undefined;
+      const res = await appointmentsApi.getAll(params);
+      const list = (res as any).data || (res as any).appointments || [];
+      setAppointments(list);
     } catch {
       // Fallback to localStorage
       try {
@@ -108,6 +116,19 @@ export default function PatientAppointmentsPage() {
       } catch { /* ignore */ }
 
       const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const isDuplicate = appointments.some((a: any) => {
+        const isSameDoc = a.doctorName === doc.name || a.doctorId === doc._id || a.doctor === doc._id || (a.doctor && a.doctor._id === doc._id);
+        const st = (a.status || "").toLowerCase();
+        return isSameDoc && ["upcoming", "confirmed", "scheduled", "in progress"].includes(st);
+      });
+
+      if (isDuplicate) {
+        alert(`You already have an upcoming appointment with ${doc.name}!`);
+        setBookingDocId(null);
+        return;
+      }
+
       await appointmentsApi.create({
         doctor: doc._id,
         patient: patientId,
@@ -123,7 +144,7 @@ export default function PatientAppointmentsPage() {
       });
       // Refresh appointments list
       await loadAppointments();
-      
+
       if (reason === "AI Recommended Booking") {
         const updated = recommendedDoctors.filter((d: any) => d._id !== doc._id);
         setRecommendedDoctors(updated);
@@ -133,9 +154,9 @@ export default function PatientAppointmentsPage() {
         setSearchQuery("");
         setSearchResults([]);
       }
-      
+
       alert(`Appointment successfully booked with ${doc.name}!`);
-      
+
       window.dispatchEvent(new Event("appointmentUpdated"));
     } catch (err) {
       console.error("Booking error:", err);
@@ -184,7 +205,7 @@ export default function PatientAppointmentsPage() {
       <div className="flex min-h-screen bg-bgLight">
         <PatientSidebar
           activeTab="appointments"
-          onTabChange={() => {}}
+          onTabChange={() => { }}
           patientName={userName}
           riskLabel="Active"
           riskColor="bg-success/10 text-success border-success/30"
@@ -255,7 +276,7 @@ export default function PatientAppointmentsPage() {
                 </div>
               </div>
             )}
-            
+
             {searchQuery && !isSearching && searchResults.length === 0 && (
               <div className="text-center p-4 bg-white rounded-xl border border-[#E2E8F0] text-secondary">
                 No doctors found matching "{searchQuery}"
@@ -322,11 +343,10 @@ export default function PatientAppointmentsPage() {
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`flex-1 py-4 text-sm font-bold transition-colors border-b-2 ${
-                    tab === t
+                  className={`flex-1 py-4 text-sm font-bold transition-colors border-b-2 ${tab === t
                       ? "border-primary text-primary bg-bgLight/30"
                       : "border-transparent text-primary/50 hover:text-primary hover:bg-bgLight/20"
-                  }`}
+                    }`}
                 >
                   {t === "upcoming" ? `Upcoming (${upcoming.length})` : `Previous (${previous.length})`}
                 </button>
@@ -341,65 +361,99 @@ export default function PatientAppointmentsPage() {
                   ))}
                 </div>
               ) : displayed.length > 0 ? (
-                <div className="space-y-4">
-                  {displayed.map((apt) => (
-                    <div
-                      key={apt._id}
-                      className="bg-white border border-bgSoft p-5 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
-                    >
-                      <div className="flex gap-4 items-start">
-                        <div className="w-12 h-12 rounded-xl bg-bgLight border border-bgSoft flex items-center justify-center shrink-0">
-                          <User size={24} className="text-secondary" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-primary text-base">{apt.doctorName || "Doctor"}</h3>
-                          <p className="text-sm font-semibold text-secondary mt-0.5">{apt.specialization || "Consultation"}</p>
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-primary/60 mt-3 font-medium">
-                            <span className="flex items-center gap-1">
-                              <Clock size={14} /> {formatDateTime(apt.dateTime)}
-                            </span>
-                            {apt.clinicName && (
-                              <span className="flex items-center gap-1">
-                                <MapPin size={14} /> {apt.clinicName}
-                              </span>
-                            )}
-                            {apt.fee && (
-                              <span className="flex items-center gap-1 font-semibold">
-                                Fee: {apt.fee}
-                              </span>
-                            )}
-                          </div>
-                          {apt.reason && (
-                            <p className="text-xs text-primary/50 mt-2 italic">
-                              Reason: {apt.reason}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {displayed.map((apt) => {
+                    const docObj = typeof apt.doctor === 'object' && apt.doctor !== null ? apt.doctor : null;
+                    const docName = docObj?.name || apt.doctorName || "Doctor";
+                    const docSpec = docObj?.specialization || apt.specialization || "Consultation";
+                    const docFee = docObj?.consultationFee ? `₹${docObj.consultationFee}` : apt.fee || "₹500";
+                    const docRating = docObj?.rating || "4.5";
+                    const docExp = docObj?.experience ? `${docObj.experience} years` : "10+ years";
+                    const docLocation = "MediFlow Multi-Speciality Clinic";
 
-                      <div className="flex flex-col items-end gap-3 shrink-0">
-                        <Badge
-                          variant={
-                            apt.status === "cancelled" ? "danger"
-                            : apt.status === "completed" ? "normal"
-                            : "success"
-                          }
-                          size="md"
-                        >
-                          {apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
-                        </Badge>
-                        {tab === "upcoming" && apt.status !== "cancelled" && (
-                          <button
-                            onClick={() => handleCancel(apt._id)}
-                            disabled={cancelling === apt._id}
-                            className="text-xs font-bold text-danger hover:underline disabled:opacity-50"
+                    return (
+                      <div key={apt._id} className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
+                        {/* Status Header */}
+                        <div className={`px-5 py-3 flex justify-between items-center border-b border-[#E2E8F0] ${apt.status === "cancelled" ? "bg-red-50" : apt.status === "completed" ? "bg-emerald-50" : "bg-[#F0F7FC]"}`}>
+                          <span className="text-[13px] font-bold text-[#64748B] flex items-center gap-1.5">
+                            <Calendar size={14} className="text-[#1B4965]" /> {formatDateTime(apt.dateTime)}
+                          </span>
+                          <Badge
+                            variant={
+                              apt.status === "cancelled" ? "danger"
+                                : apt.status === "completed" ? "success"
+                                  : "primary"
+                            }
+                            size="sm"
                           >
-                            {cancelling === apt._id ? "Cancelling…" : "Cancel Appointment"}
-                          </button>
+                            {apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
+                          </Badge>
+                        </div>
+
+                        <div className="p-5 flex-1">
+                          {/* Doctor Info */}
+                          <div className="flex gap-4 items-start mb-5 pb-5 border-b border-[#E2E8F0] border-dashed">
+                            <div className="w-14 h-14 rounded-full bg-[#1B4965] flex items-center justify-center shrink-0 shadow-sm border-2 border-white outline outline-1 outline-[#E2E8F0]">
+                              <User size={24} className="text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-bold text-[#1B4965] text-[17px] leading-tight">{docName}</h3>
+                              <p className="text-[12px] font-bold text-[#0A7029] bg-[#E7FCE3] inline-block px-2 py-0.5 rounded-md mt-1 mb-3">{docSpec}</p>
+
+                              <div className="grid grid-cols-2 gap-y-2.5 gap-x-2">
+                                <span className="flex items-center gap-1.5 text-[12px] text-[#64748B] font-medium">
+                                  <MapPin size={14} className="text-[#94A3B8]" /> {docLocation}
+                                </span>
+                                <span className="flex items-center gap-1.5 text-[12px] text-[#64748B] font-medium">
+                                  <span className="text-[13px]">⭐</span> {docRating} Rating
+                                </span>
+                                <span className="flex items-center gap-1.5 text-[12px] text-[#64748B] font-medium">
+                                  <span className="text-[#1B4965] font-bold text-[13px]">₹</span> Fee: {docFee}
+                                </span>
+                                <span className="flex items-center gap-1.5 text-[12px] text-[#64748B] font-medium">
+                                  <span className="text-[13px]">🩺</span> Exp: {docExp}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Patient / Booking Info */}
+                          <div className="bg-[#F8FAFC] rounded-xl p-3 border border-[#E2E8F0]">
+                            <p className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider mb-1">Appointment Details</p>
+                            <p className="text-[13px] text-[#334155] mb-1">
+                              <span className="font-semibold text-[#1B4965]">Patient:</span> {apt.patientName || userName}
+                            </p>
+                            <p className="text-[13px] text-[#334155] leading-snug whitespace-pre-wrap mt-1">
+                              {apt.reason?.startsWith("AI Summary:\n") ? (
+                                <>
+                                  <span className="font-semibold text-[#1B4965]">AI Summary:</span>
+                                  {"\n"}{apt.reason.replace("AI Summary:\n", "")}
+                                </>
+                              ) : (
+                                <>
+                                  <span className="font-semibold text-[#1B4965]">Reason:</span>
+                                  {" "}{apt.reason || "General Consultation"}
+                                </>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        {tab === "upcoming" && apt.status !== "cancelled" && (
+                          <div className="p-4 pt-0">
+                            <button
+                              onClick={() => handleCancel(apt._id)}
+                              disabled={cancelling === apt._id}
+                              className="w-full py-2.5 rounded-xl bg-white border border-[#E2E8F0] text-red-600 text-[13px] font-bold hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-50"
+                            >
+                              {cancelling === apt._id ? "Cancelling…" : "Cancel Appointment"}
+                            </button>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-12">

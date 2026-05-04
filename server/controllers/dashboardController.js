@@ -2,6 +2,7 @@ const Patient     = require('../models/Patient');
 const Doctor      = require('../models/Doctor');
 const Appointment = require('../models/Appointment');
 const MedicalRecord = require('../models/MedicalRecord');
+const mongoose = require('mongoose');
 
 // @desc    Get full dashboard summary (one API call)
 // @route   GET /api/dashboard/summary
@@ -12,6 +13,23 @@ const getDashboardSummary = async (req, res, next) => {
     today.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
+
+    const { doctorId } = req.query;
+
+    const basePatientFilter = { isActive: true };
+    const baseApptFilter = { date: { $gte: today, $lte: todayEnd } };
+    const baseRecordFilter = {};
+
+    let patientIds = [];
+    if (doctorId) {
+      const appts = await Appointment.find({ doctor: doctorId }).distinct('patient');
+      basePatientFilter.$or = [
+        { assignedDoctor: doctorId },
+        { _id: { $in: appts } }
+      ];
+      baseApptFilter.doctor = doctorId;
+      baseRecordFilter.doctor = doctorId;
+    }
 
     // Run all queries in parallel for performance
     const [
@@ -27,29 +45,27 @@ const getDashboardSummary = async (req, res, next) => {
       todayApptList,
     ] = await Promise.all([
       // Patient counts
-      Patient.countDocuments({ isActive: true }),
-      Patient.countDocuments({ isActive: true, priority: 'emergency' }),
-      Patient.countDocuments({ isActive: true, priority: 'warning' }),
-      Patient.countDocuments({ isActive: true, priority: 'success' }),
+      Patient.countDocuments(basePatientFilter),
+      Patient.countDocuments({ ...basePatientFilter, priority: 'emergency' }),
+      Patient.countDocuments({ ...basePatientFilter, priority: 'warning' }),
+      Patient.countDocuments({ ...basePatientFilter, priority: 'success' }),
 
       // Today's appointment count
-      Appointment.countDocuments({
-        date: { $gte: today, $lte: todayEnd },
-      }),
+      Appointment.countDocuments(baseApptFilter),
 
-      // Doctor counts
+      // Doctor counts (always global for now, but maybe we don't care if it's doctor mode)
       Doctor.countDocuments({ isActive: true }),
       Doctor.countDocuments({ isActive: true, isAvailable: true }),
 
       // Recent 7 patients
-      Patient.find({ isActive: true })
+      Patient.find(basePatientFilter)
         .populate('assignedDoctor', 'name specialization')
         .sort({ createdAt: -1 })
         .limit(7)
         .select('name patientId age condition priority status assignedDoctor createdAt'),
 
       // Recent 5 medical records
-      MedicalRecord.find()
+      MedicalRecord.find(baseRecordFilter)
         .populate('patient', 'name patientId')
         .populate('doctor', 'name')
         .sort({ recordDate: -1 })
@@ -57,7 +73,7 @@ const getDashboardSummary = async (req, res, next) => {
         .select('title type patient doctor recordDate'),
 
       // Today's appointments with patient & doctor info
-      Appointment.find({ date: { $gte: today, $lte: todayEnd } })
+      Appointment.find(baseApptFilter)
         .populate('patient', 'name patientId age priority')
         .populate('doctor', 'name specialization')
         .sort({ timeSlot: 1 })
@@ -96,12 +112,15 @@ const getMonthlyVisits = async (req, res, next) => {
     sixMonthsAgo.setDate(1);
     sixMonthsAgo.setHours(0, 0, 0, 0);
 
+    const { doctorId } = req.query;
+
+    const matchFilter = { date: { $gte: sixMonthsAgo } };
+    if (doctorId) matchFilter.doctor = mongoose.Types.ObjectId(doctorId);
+
     // Aggregate appointments by month
     const monthlyData = await Appointment.aggregate([
       {
-        $match: {
-          date: { $gte: sixMonthsAgo },
-        },
+        $match: matchFilter,
       },
       {
         $group: {
@@ -148,8 +167,12 @@ const getMonthlyVisits = async (req, res, next) => {
 // @access  Private
 const getCaseDistribution = async (req, res, next) => {
   try {
+    const { doctorId } = req.query;
+    const matchFilter = { isActive: true };
+    if (doctorId) matchFilter.assignedDoctor = mongoose.Types.ObjectId(doctorId);
+
     const distribution = await Patient.aggregate([
-      { $match: { isActive: true } },
+      { $match: matchFilter },
       {
         $group: {
           _id:   '$priority',

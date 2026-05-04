@@ -2,6 +2,7 @@ import { useState } from 'react';
 import DoctorSidebar from './DoctorSidebar';
 import DoctorTopbar from './DoctorTopbar';
 import DoctorDashboard from './DoctorDashboard';
+import DoctorProfile from './DoctorProfile';
 import AppointmentList from '@/components/appointments/AppointmentList';
 import './index.css';
 import './layout.css';
@@ -13,6 +14,7 @@ const PAGE_META = {
   doctors: { title: 'Doctors', subtitle: 'Staff directory & availability' },
   analytics: { title: 'Analytics', subtitle: 'Reports & performance metrics' },
   settings: { title: 'Settings', subtitle: 'System configuration' },
+  profile: { title: 'My Profile', subtitle: 'Manage your professional details' },
 };
 
 // Placeholder for pages not yet built
@@ -54,6 +56,8 @@ export default function App() {
           <DoctorDashboard />
         ) : activePage === 'appointments' ? (
           <div className="main-content"><AppointmentList /></div>
+        ) : activePage === 'profile' ? (
+          <DoctorProfile />
         ) : (
           <div className="main-content"><ComingSoon page={activePage} /></div>
         )}

@@ -70,7 +70,10 @@ export default function AppointmentList() {
               allergies: safeSplit(appt.patient?.allergies),
               medications: safeSplit(appt.patient?.medications),
             },
-            recommendation: appt.notes || 'AI Triage Booked via Search/Chatbot'
+            recommendation: appt.notes || 'AI Triage Booked via Search/Chatbot',
+            checkupNotes: appt.notes || '',
+            prescription: appt.prescription || '',
+            avoidances: appt.recommendedTests || ''
           };
         });
         setAppointmentsData(data.reverse()); // Show newest first

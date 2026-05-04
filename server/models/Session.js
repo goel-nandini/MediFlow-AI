@@ -8,6 +8,7 @@ const SessionSchema = new mongoose.Schema({
   decisionResult:      { type: Object },
   status:              { type: String, default: 'active' },
   patientName:         { type: String },
+  patientId:           { type: String },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Session', SessionSchema);

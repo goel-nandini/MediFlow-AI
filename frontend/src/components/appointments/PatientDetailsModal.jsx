@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Info, AlertTriangle, Clock, Activity, FileText } from 'lucide-react';
+import { X, Info, AlertTriangle, Clock, Activity, FileText, CheckCircle, Pill } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function PatientDetailsModal({ patient, onClose }) {
@@ -118,6 +118,49 @@ export default function PatientDetailsModal({ patient, onClose }) {
               </div>
             </div>
           </div>
+
+          {/* Doctor's Checkup Report (Only visible if completed) */}
+          {patient.status === 'Completed' && (
+            <div style={{ marginBottom: '32px', background: '#F0FDFA', border: '1px solid #14B8A6', borderRadius: '12px', padding: '24px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, right: 0, width: '120px', height: '120px', background: '#14B8A6', opacity: 0.05, borderRadius: '50%', transform: 'translate(30%, -30%)' }} />
+              
+              <h3 className="section-title flex items-center" style={{ gap: '8px', fontSize: '18px', marginBottom: '20px', color: '#0F766E' }}>
+                <CheckCircle size={20} style={{ color: '#0D9488' }} /> Doctor's Checkup Report
+              </h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* Notes */}
+                <div>
+                  <p className="section-sub" style={{ fontSize: '12px', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.5px', color: '#0F766E' }}>CLINICAL DIAGNOSIS</p>
+                  <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '8px', border: '1px solid #99F6E4', fontSize: '15px', color: '#134E4A', lineHeight: 1.6 }}>
+                    {patient.checkupNotes || 'No notes documented.'}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+                  {/* Prescriptions */}
+                  <div>
+                    <p className="section-sub flex items-center" style={{ gap: '6px', fontSize: '12px', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.5px', color: '#16A34A' }}>
+                      <Pill size={14} /> RECOMMENDED MEDICINES
+                    </p>
+                    <div style={{ background: '#F0FDF4', padding: '16px', borderRadius: '8px', border: '1px solid #BBF7D0', fontSize: '14px', color: '#166534', whiteSpace: 'pre-wrap', minHeight: '80px' }}>
+                      {patient.prescription || 'No medicines prescribed.'}
+                    </div>
+                  </div>
+
+                  {/* Avoidances */}
+                  <div>
+                    <p className="section-sub flex items-center" style={{ gap: '6px', fontSize: '12px', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.5px', color: '#D97706' }}>
+                      <AlertTriangle size={14} /> PRECAUTIONS / AVOID
+                    </p>
+                    <div style={{ background: '#FFFBEB', padding: '16px', borderRadius: '8px', border: '1px solid #FDE68A', fontSize: '14px', color: '#92400E', whiteSpace: 'pre-wrap', minHeight: '80px' }}>
+                      {patient.avoidances || 'No specific precautions.'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Medical History */}
           <div style={{ marginBottom: '32px' }}>

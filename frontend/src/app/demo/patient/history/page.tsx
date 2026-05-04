@@ -7,6 +7,7 @@ import { Card } from "../../../../components/ui/Card";
 import { Badge } from "../../../../components/ui/Badge";
 import { DemoNavbar } from "../../../../components/layout/DemoNavbar";
 import { PatientSidebar, type PatientTab } from "../../../../components/patient/PatientSidebar";
+import { healthHistoryApi } from "@/lib/api";
 
 interface HealthRecord {
   id: number;
@@ -53,31 +54,28 @@ export default function PatientHistoryPage() {
     };
   }, [router]);
 
-  const loadTimeline = () => {
+  const loadTimeline = async () => {
     try {
-      const history = JSON.parse(localStorage.getItem("mediflow_health_history") || "[]");
-      const reports = JSON.parse(localStorage.getItem("mediflow_reports") || "[]");
+      const u = JSON.parse(localStorage.getItem("mediflow_user") || "{}");
+      if (!u?.id) return;
 
-      const combined = [
-        ...history.map((h: any) => ({ ...h, type: "assessment" })),
-        ...reports.map((r: any) => ({ ...r, type: "report" }))
-      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-      setTimeline(combined);
+      const res = await healthHistoryApi.getAll(u.id);
+      if (res.data) {
+        setTimeline(res.data);
+      }
     } catch { }
   };
 
   const handleUpload = () => {
-    if (!file) return;
+    if (!file || !user?.id) return;
     setIsUploading(true);
     setUploadSuccess(false);
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const base64 = e.target?.result as string;
       const newReport = {
-        id: Date.now(),
-        date: new Date(reportDate).toISOString(),
+        patient: user.id,
         type: "report",
         fileName: file.name,
         reportType,
@@ -85,32 +83,19 @@ export default function PatientHistoryPage() {
         symptoms: `Uploaded: ${reportType}`,
         severity: "—",
         riskLevel: "Analyzed",
-        aiSummary: "Analyzing report...",
+        aiSummary: "Report appears normal. No critical findings detected. Consult your doctor for detailed review.",
       };
 
-      // Initial save
-      const reports = JSON.parse(localStorage.getItem("mediflow_reports") || "[]");
-      reports.unshift(newReport);
-      localStorage.setItem("mediflow_reports", JSON.stringify(reports));
-      window.dispatchEvent(new Event("healthUpdated"));
-
-      // Mock backend delay for analysis
-      setTimeout(() => {
+      try {
+        await healthHistoryApi.create(newReport);
+        window.dispatchEvent(new Event("healthUpdated"));
         setIsUploading(false);
         setUploadSuccess(true);
-
-        // Update with analysis
-        const currentReports = JSON.parse(localStorage.getItem("mediflow_reports") || "[]");
-        const updated = currentReports.map((r: any) => r.id === newReport.id ? {
-          ...r,
-          aiSummary: "Report appears normal. No critical findings detected. Consult your doctor for detailed review."
-        } : r);
-
-        localStorage.setItem("mediflow_reports", JSON.stringify(updated));
-        window.dispatchEvent(new Event("healthUpdated"));
         setFile(null);
         setTimeout(() => setUploadSuccess(false), 3000);
-      }, 2000);
+      } catch (err) {
+        setIsUploading(false);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -119,7 +104,6 @@ export default function PatientHistoryPage() {
 
   return (
     <>
-      <DemoNavbar title="Health History" />
       <div className="flex min-h-screen bg-bgLight">
         <PatientSidebar activeTab="health-history" onTabChange={() => { }} patientName={user.name} riskLabel="Active" riskColor="bg-success/10 text-success border-success/30" />
 
@@ -263,18 +247,6 @@ export default function PatientHistoryPage() {
                                   <span className="text-[11px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-1 rounded-full font-semibold">
                                     Confirmed
                                   </span>
-                                  <button
-                                    onClick={() => {
-                                      localStorage.setItem(
-                                        "mediflow_reappointment_doctor",
-                                        JSON.stringify((rec as any).assignedDoctor)
-                                      );
-                                      router.push("/demo/patient/ai-assistant");
-                                    }}
-                                    className="text-[11px] bg-[#1B4965] text-white px-3 py-1.5 rounded-full font-semibold hover:bg-[#163d52] transition-colors"
-                                  >
-                                    🔄 Re-appointment
-                                  </button>
                                 </div>
                               </div>
                             </div>

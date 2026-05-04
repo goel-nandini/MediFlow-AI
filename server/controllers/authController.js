@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const Patient = require('../models/Patient');
 const Doctor = require('../models/Doctor');
+const User = require('../models/User');
 
 // Helper: generate JWT token
 const generateToken = (id) => {
@@ -174,6 +175,26 @@ const login = async (req, res, next) => {
           message: 'Login successful (Doctor Access).',
           token,
           user: formatDoctor(doctor),
+        });
+      }
+    }
+
+    // ── Check Admin / System User ──────────────────────────────────────
+    const systemUser = await User.findOne({ email }).select('+password');
+    if (systemUser) {
+      const isMatch = await systemUser.matchPassword(password);
+      if (isMatch) {
+        const token = generateToken(systemUser._id);
+        return res.json({
+          success: true,
+          message: 'Login successful (Admin Access).',
+          token,
+          user: {
+            id: systemUser._id,
+            name: systemUser.name,
+            email: systemUser.email,
+            role: systemUser.role || 'admin',
+          },
         });
       }
     }

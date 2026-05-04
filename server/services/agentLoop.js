@@ -1,6 +1,6 @@
-const { callLLM } = require('./groqClient');
 const fs = require('fs');
 const path = require('path');
+const { callLLM, callLLMMessages } = require('./groqClient');
 
 const getPrompt = (id) => {
   const prompts = JSON.parse(
@@ -9,15 +9,39 @@ const getPrompt = (id) => {
   return prompts.find(p => p.id === id)?.content || '';
 };
 
-// Step 1: Ask follow-up question
+const cleanJSON = (raw) => {
+  let cleaned = raw.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+  return cleaned;
+};
+
+// Step 1: Ask follow-up question — now passes full history as real chat turns
 const questioningAgent = async (symptoms, history) => {
   const systemPrompt = getPrompt('questioning_system');
-  const userMessage = `
-    Patient symptoms: ${symptoms}
-    Conversation so far: ${JSON.stringify(history)}
-    What is the ONE most important follow-up question to ask?
-  `;
-  return await callLLM(systemPrompt, userMessage);
+
+  // ✅ Build proper multi-turn message array so model sees full conversation
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: `Patient initial symptoms: ${symptoms}` },
+  ];
+
+  // Replay conversation history as actual chat turns
+  for (const turn of history) {
+    if (turn.role === 'user' || turn.role === 'assistant') {
+      messages.push({ role: turn.role, content: turn.content });
+    }
+  }
+
+  messages.push({
+    role: 'user',
+    content: 'Based on the conversation so far, what is the ONE most important follow-up question you still need to ask? Do not repeat any question already asked.'
+  });
+
+  return await callLLMMessages(messages);
 };
 
 // Step 2: Assess urgency
@@ -67,10 +91,14 @@ const decisionAgent = async (triageResult, symptoms) => {
 const runAgentLoop = async (session) => {
   const { symptoms, conversationHistory, questionCount } = session;
 
-  // Agent decides: do I have enough info?
-  if (questionCount < 6) {
-    // Still gathering info
+  // ✅ 3 questions max (questionCount tracks patient *answers*, not agent questions)
+  if (questionCount < 3) {
     const question = await questioningAgent(symptoms, conversationHistory);
+
+    // ✅ Save agent's question into history so next call sees it
+    session.conversationHistory.push({ role: 'assistant', content: question });
+    await session.save();
+
     return {
       state: 'QUESTIONING',
       nextQuestion: question,
@@ -88,22 +116,6 @@ const runAgentLoop = async (session) => {
     decision,
     done: true
   };
-};
-
-// Add this function at the top after require statements
-const cleanJSON = (raw) => {
-  // Remove all markdown code blocks
-  let cleaned = raw.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
-
-  // Find JSON object within the string
-  const firstBrace = cleaned.indexOf('{');
-  const lastBrace = cleaned.lastIndexOf('}');
-
-  if (firstBrace !== -1 && lastBrace !== -1) {
-    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-  }
-
-  return cleaned;
 };
 
 module.exports = { runAgentLoop };

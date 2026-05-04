@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   UserCircle, User, Mail, Lock, Ruler, Weight, Droplets,
@@ -13,29 +13,37 @@ import { InputField } from "../../../../components/ui/InputField";
 import { DemoNavbar } from "../../../../components/layout/DemoNavbar";
 import { authApi } from "../../../../lib/api";
 
-const BLOOD_GROUPS = ["Select blood group","A+","A-","B+","B-","AB+","AB-","O+","O-","Unknown"];
-const GENDERS     = ["Select gender","Male","Female","Non-binary","Prefer not to say"];
-const CONDITIONS  = ["Diabetes","Hypertension","Asthma","Heart Disease","Thyroid Disorder","Arthritis","Depression/Anxiety","None"];
+const BLOOD_GROUPS = ["Select blood group", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"];
+const GENDERS = ["Select gender", "Male", "Female", "Non-binary", "Prefer not to say"];
+const CONDITIONS = ["Diabetes", "Hypertension", "Asthma", "Heart Disease", "Thyroid Disorder", "Arthritis", "Depression/Anxiety", "None"];
 
 export default function PatientAuthPage() {
   const router = useRouter();
-  const [mode, setMode]       = useState<"login" | "signup">("login");
-  const [showPw, setShowPw]   = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors]   = useState<Record<string,string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Auto-redirect if already logged in as patient
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("mediflow_token");
+      if (token) router.replace("/demo/patient/dashboard");
+    } catch { }
+  }, [router]);
 
   /* ── Sign-up fields ── */
-  const [name, setName]               = useState("");
-  const [email, setEmail]             = useState("");
-  const [password, setPassword]       = useState("");
-  const [age, setAge]                 = useState("");
-  const [height, setHeight]           = useState("");
-  const [weight, setWeight]           = useState("");
-  const [bloodGroup, setBloodGroup]   = useState("");
-  const [gender, setGender]           = useState("");
-  const [conditions, setConditions]   = useState<string[]>([]);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [age, setAge] = useState("");
+  const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState("");
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [gender, setGender] = useState("");
+  const [conditions, setConditions] = useState<string[]>([]);
   const [medications, setMedications] = useState("");
-  const [allergies, setAllergies]     = useState("");
+  const [allergies, setAllergies] = useState("");
 
 
 
@@ -45,11 +53,11 @@ export default function PatientAuthPage() {
 
   /* ── Validation ── */
   const validateSignup = () => {
-    const e: Record<string,string> = {};
-    if (name.trim().length < 2)   e.name = "Min 2 characters";
-    if (!email.includes("@"))      e.email = "Enter a valid email";
-    if (password.length < 6)       e.password = "Min 6 characters";
-    if (!age || Number(age) < 1)   e.age = "Enter a valid age";
+    const e: Record<string, string> = {};
+    if (name.trim().length < 2) e.name = "Min 2 characters";
+    if (!email.includes("@")) e.email = "Enter a valid email";
+    if (password.length < 6) e.password = "Min 6 characters";
+    if (!age || Number(age) < 1) e.age = "Enter a valid age";
     if (!height || Number(height) < 50) e.height = "Enter height in cm";
     if (!weight || Number(weight) < 10) e.weight = "Enter weight in kg";
     if (!bloodGroup || bloodGroup === "Select blood group") e.bloodGroup = "Select a blood group";
@@ -58,9 +66,9 @@ export default function PatientAuthPage() {
   };
 
   const validateLogin = () => {
-    const e: Record<string,string> = {};
+    const e: Record<string, string> = {};
     if (!email.includes("@")) e.email = "Enter a valid email";
-    if (!password)             e.password = "Enter your password";
+    if (!password) e.password = "Enter your password";
     return e;
   };
 
@@ -105,7 +113,6 @@ export default function PatientAuthPage() {
 
   return (
     <>
-      <DemoNavbar showBack backHref="/demo" title="Patient Portal" />
       <PageContainer maxWidth="sm">
         <Card padding="lg" className="mt-8 animate-fadeUp mb-10">
 
@@ -117,7 +124,7 @@ export default function PatientAuthPage() {
 
           {/* Tab toggle */}
           <div className="bg-bgLight rounded-xl p-1 flex mt-6">
-            {(["login","signup"] as const).map(m => (
+            {(["login", "signup"] as const).map(m => (
               <button key={m} onClick={() => { setMode(m); setErrors({}); }}
                 className={`flex-1 py-2 rounded-lg text-sm transition-all duration-200 ${mode === m ? "bg-white shadow-sm text-primary font-semibold" : "text-primary/50 hover:text-primary"}`}>
                 {m === "login" ? "Log In" : "Sign Up"}
@@ -215,8 +222,7 @@ export default function PatientAuthPage() {
                   <div className="flex flex-wrap gap-2">
                     {CONDITIONS.map(c => (
                       <button key={c} type="button" onClick={() => toggleCondition(c)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
-                          conditions.includes(c) ? "bg-secondary text-white border-secondary" : "bg-bgSoft border-bgLight text-primary/70 hover:border-secondary"}`}>
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${conditions.includes(c) ? "bg-secondary text-white border-secondary" : "bg-bgSoft border-bgLight text-primary/70 hover:border-secondary"}`}>
                         {c}
                       </button>
                     ))}

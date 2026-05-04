@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Send, Bot, RotateCcw, AlertCircle, CheckCircle2, Activity, Paperclip, ImageIcon, Camera } from "lucide-react";
-import { triageApi, doctorsApi, appointmentsApi, type AgentResult, type Doctor } from "@/lib/api";
+import { triageApi, doctorsApi, appointmentsApi, healthHistoryApi, type AgentResult, type Doctor } from "@/lib/api";
 
 /* ─── Types ── */
 interface Message { role: "ai" | "user"; text: string; image?: string; }
@@ -32,6 +32,7 @@ export default function HealthChat() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [agentResult, setAgentResult] = useState<AgentResult | null>(null);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
   const [bookingDoc, setBookingDoc] = useState<Doctor | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -78,7 +79,16 @@ export default function HealthChat() {
 
       if (isYes) {
         pushUser(val);
-        const topDoctor = doctors[0];
+        // Find the first doctor that is NOT already booked
+        const topDoctor = doctors.find(d => {
+          const isDup = appointments.some((a: any) => {
+            const isSameDoc = a.doctorId === d._id || a.doctor === d._id || (a.doctor && a.doctor._id === d._id);
+            const st = (a.status || "").toLowerCase();
+            return isSameDoc && ["upcoming", "confirmed", "scheduled", "in progress"].includes(st);
+          });
+          return !isDup;
+        }) || doctors[0];
+        
         handleBook(topDoctor);
         return;
       }
@@ -164,7 +174,7 @@ export default function HealthChat() {
   //   }
   // };
 
-  const handleDone = (result: AgentResult) => {
+  const handleDone = async (result: AgentResult) => {
     setAgentResult(result);
     setPhase("result");
 
@@ -180,9 +190,9 @@ export default function HealthChat() {
             ? "MEDIUM"
             : "LOW";
 
-      const now = new Date().toISOString();
-
       const historyEntry = {
+        patient: user.id,
+        type: "assessment",
         riskLevel: normalizedRisk,
         confidence: (result.triage?.confidence ?? 0) / 100,
         aiSummary: result.decision?.recommendation ?? result.triage?.reason ?? "",
@@ -193,22 +203,17 @@ export default function HealthChat() {
           : [],
         symptoms: result.triage?.keySymptoms?.join(", ") ?? "",
         appointmentBooked: false,
-        createdAt: now,
-        date: now,
       };
 
-      // Accumulate — keep all past sessions, newest first
-      const existing: any[] = [];
       try {
-        const stored = localStorage.getItem("mediflow_health_history");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) existing.push(...parsed);
+        if (user.id) {
+          const res = await healthHistoryApi.create(historyEntry);
+          if (res.data && res.data._id) {
+            localStorage.setItem("mediflow_current_assessment_id", res.data._id);
+          }
+          window.dispatchEvent(new Event("healthHistoryUpdated"));
         }
-      } catch {}
-      existing.unshift(historyEntry); // add newest first
-      localStorage.setItem("mediflow_health_history", JSON.stringify(existing));
-      window.dispatchEvent(new Event("healthHistoryUpdated"));
+      } catch { }
     } catch { }
 
     if (result.decision?.specialistNeeded) {
@@ -285,11 +290,41 @@ export default function HealthChat() {
       if (allDocs.length > 0) {
         setDoctors(allDocs);
         setPhase("doctors");
+
+        // Fetch appointments to check for duplicates
+        let patientId = null;
+        try {
+          const u = JSON.parse(localStorage.getItem("mediflow_user") || "{}");
+          if (u?.id) patientId = u.id;
+        } catch { /* ignore */ }
+
+        let myAppts: any[] = [];
+        if (patientId) {
+           try {
+             const apptRes = await appointmentsApi.getAll({ patientId });
+             myAppts = (apptRes as any).data || (apptRes as any).appointments || [];
+             setAppointments(myAppts);
+           } catch { /* ignore */ }
+        }
+
+        const duplicateDocs = allDocs.filter(d => myAppts.some(a => {
+           const isSameDoc = a.doctorId === d._id || a.doctor === d._id || (a.doctor && a.doctor._id === d._id);
+           const st = (a.status || "").toLowerCase();
+           return isSameDoc && ["upcoming", "confirmed", "scheduled", "in progress"].includes(st);
+        }));
+
         pushAI(`Based on your symptoms, I recommend seeing a **${specialization}** specialist. Here are the available doctors:`);
+        
+        if (duplicateDocs.length > 0) {
+           setTimeout(() => {
+             pushAI(`⚠️ It looks like you already have an upcoming appointment booked with **${duplicateDocs.map(d => d.name).join(", ")}**!`);
+           }, 800);
+        }
+
         setTimeout(() => {
           pushAI(`Would you like me to book an appointment? Reply **Yes** to confirm or select a doctor below.`);
           setPhase("chat");
-        }, 800);
+        }, duplicateDocs.length > 0 ? 1600 : 800);
       } else {
         pushAI(`I recommend seeing a **${specialization}** specialist. Please book from the Appointments page.`);
         setPhase("result");
@@ -320,6 +355,21 @@ export default function HealthChat() {
   const handleBook = async (doc: Doctor) => {
     setBookingLoading(true);
     setBookingDoc(doc);
+    
+    // Check for duplicates before booking
+    const isDup = appointments.some((a: any) => {
+      const isSameDoc = a.doctorName === doc.name || a.doctorId === doc._id || a.doctor === doc._id || (a.doctor && a.doctor._id === doc._id);
+      const st = (a.status || "").toLowerCase();
+      return isSameDoc && ["upcoming", "confirmed", "scheduled", "in progress"].includes(st);
+    });
+
+    if (isDup) {
+      pushAI(`❌ You already have an upcoming appointment with **${doc.name}**! Please check your Appointments page.`);
+      setBookingLoading(false);
+      setPhase("chat");
+      return;
+    }
+
     setPhase("booked");
     pushAI(`Booking your appointment with **${doc.name}**...`);
     try {
@@ -330,6 +380,17 @@ export default function HealthChat() {
       } catch { /* ignore */ }
 
       const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      let formattedReason = "";
+      if (agentResult?.decision?.recommendation) {
+        formattedReason += `AI Summary:\n${agentResult.decision.recommendation}\n\n`;
+      }
+      if (agentResult?.triage?.keySymptoms && agentResult.triage.keySymptoms.length > 0) {
+        formattedReason += `Monitor: ${agentResult.triage.keySymptoms.join(", ")}`;
+      }
+      if (!formattedReason) {
+        formattedReason = agentResult?.triage?.reason || "AI Triage Referral";
+      }
+
       await appointmentsApi.create({
         doctor: doc._id,
         patient: patientId,
@@ -341,9 +402,7 @@ export default function HealthChat() {
         timeSlot: "10:00",
         status: "upcoming",
         risk: agentResult?.triage?.risk || "NORMAL",
-        reason: (agentResult?.triage?.keySymptoms && agentResult.triage.keySymptoms.length > 0) 
-          ? agentResult.triage.keySymptoms.join(", ") 
-          : (agentResult?.triage?.reason || "AI Triage Referral"),
+        reason: formattedReason,
         priority: agentResult?.triage?.risk === "EMERGENCY" 
           ? "emergency" 
           : agentResult?.triage?.risk === "HIGH"
@@ -354,31 +413,25 @@ export default function HealthChat() {
 
       // Update Care Plan
       try {
-        const stored = localStorage.getItem("mediflow_health_history");
-        if (stored) {
-          const history = JSON.parse(stored);
-          if (history[0]) {
-            history[0].appointmentBooked = true;
-            history[0].bookedDoctor = doc.name;
-            history[0].bookedSpecialization = doc.specialization;
-            history[0].bookedTime = new Date(
-              Date.now() + 24 * 60 * 60 * 1000
-            ).toLocaleDateString();
-            history[0].assignedDoctor = {
+        const assessmentId = localStorage.getItem("mediflow_current_assessment_id");
+        if (assessmentId) {
+          await healthHistoryApi.update(assessmentId, {
+            appointmentBooked: true,
+            bookedDoctor: doc.name,
+            bookedSpecialization: doc.specialization,
+            bookedTime: tomorrow.toLocaleDateString(),
+            assignedDoctor: {
               id: doc._id,
               name: doc.name,
               specialization: doc.specialization,
               rating: doc.rating,
               phone: doc.phone || "",
               isAvailable: doc.isAvailable,
-            };
-            history[0].appointmentSource = "chatbot";
-            history[0].appointmentDate = new Date(
-              Date.now() + 24 * 60 * 60 * 1000
-            ).toISOString();
-            localStorage.setItem("mediflow_health_history", JSON.stringify(history));
-            window.dispatchEvent(new Event("healthHistoryUpdated"));
-          }
+            },
+            appointmentSource: "chatbot",
+            appointmentDate: tomorrow.toISOString(),
+          });
+          window.dispatchEvent(new Event("healthHistoryUpdated"));
         }
       } catch { }
 
@@ -507,24 +560,32 @@ export default function HealthChat() {
         )}
 
         {/* Doctor recommendations */}
-        {(phase === "doctors" || phase === "booked") && (
-          <div className="flex justify-start flex-col gap-2 w-[85%]">
-            {doctors.map((doc, i) => (
-              <div key={doc._id || i} className="bg-white rounded-lg p-3 shadow-sm flex flex-col gap-2 border border-[#E9EDEF]">
-                <div className="flex justify-between items-center">
-                  <strong className="text-[#111B21]">{doc.name}</strong>
-                  <span className="text-[11px] bg-[#E7FCE3] text-[#0A7029] px-2 py-0.5 rounded-md">Available</span>
+        {(phase === "doctors" || phase === "booked" || phase === "chat") && doctors.length > 0 && (
+          <div className="flex justify-start flex-col gap-2 w-[85%] mt-2">
+            {doctors.map((doc, i) => {
+              const isDup = appointments.some((a: any) => {
+                const isSameDoc = a.doctorId === doc._id || a.doctor === doc._id || (a.doctor && a.doctor._id === doc._id);
+                const st = (a.status || "").toLowerCase();
+                return isSameDoc && ["upcoming", "confirmed", "scheduled", "in progress"].includes(st);
+              });
+
+              return (
+                <div key={doc._id || i} className="bg-white rounded-lg p-3 shadow-sm flex flex-col gap-2 border border-[#E9EDEF]">
+                  <div className="flex justify-between items-center">
+                    <strong className="text-[#111B21]">{doc.name}</strong>
+                    <span className="text-[11px] bg-[#E7FCE3] text-[#0A7029] px-2 py-0.5 rounded-md">Available</span>
+                  </div>
+                  <p className="text-[13px] text-[#54656F] m-0">{doc.specialization} · ⭐ {doc.rating}</p>
+                  <button
+                    onClick={() => handleBook(doc)}
+                    disabled={bookingLoading || phase === "booked" || isDup}
+                    className={`${isDup ? "bg-gray-300 text-gray-600" : "bg-[#00A884] text-white"} text-[13px] font-bold py-1.5 rounded mt-1 disabled:opacity-50`}
+                  >
+                    {isDup ? "Already Booked" : "Book Appointment"}
+                  </button>
                 </div>
-                <p className="text-[13px] text-[#54656F] m-0">{doc.specialization} · ⭐ {doc.rating}</p>
-                <button
-                  onClick={() => handleBook(doc)}
-                  disabled={bookingLoading || phase === "booked"}
-                  className="bg-[#00A884] text-white text-[13px] font-bold py-1.5 rounded mt-1 disabled:opacity-50"
-                >
-                  Book Appointment
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

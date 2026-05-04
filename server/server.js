@@ -15,6 +15,7 @@ const recordRoutes      = require('./routes/records');
 const dashboardRoutes   = require('./routes/dashboard');
 const promptRoutes      = require('./routes/prompts');
 const triageRoutes      = require('./routes/triage');
+const healthHistoryRoutes = require('./routes/healthHistory');
 
 // Connect to MongoDB
 connectDB();
@@ -46,6 +47,7 @@ app.use('/api/records',      recordRoutes);
 app.use('/api/dashboard',    dashboardRoutes);
 app.use('/api/prompts', promptRoutes);
 app.use('/api/triage', triageRoutes);
+app.use('/api/health-history', healthHistoryRoutes);
 
 // ── Health Check ───────────────────────────────────
 app.get('/api/health', (req, res) => {

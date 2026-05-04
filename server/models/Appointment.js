@@ -61,6 +61,16 @@ dateTime:    { type: String, default: '' },
       type: String,
       default: '',
     },
+    // Doctor's given prescription
+    prescription: {
+      type: String,
+      default: '',
+    },
+    // Recommended lab/diagnostic tests
+    recommendedTests: {
+      type: String,
+      default: '',
+    },
     // Follow-up required?
     followUpRequired: {
       type: Boolean,

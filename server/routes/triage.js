@@ -6,11 +6,12 @@ const { runAgentLoop } = require('../services/agentLoop');
 // POST /api/triage/start
 router.post('/start', async (req, res, next) => {
   try {
-    const { symptoms, patientName } = req.body;
+    const { symptoms, patientName, patientId } = req.body;
     
     const session = await Session.create({
       symptoms,
       patientName: patientName || 'Anonymous',
+      patientId: patientId || null,
       conversationHistory: [{ role: 'user', content: symptoms }],
       questionCount: 0
     });
@@ -58,10 +59,16 @@ router.post('/respond', async (req, res, next) => {
   }
 });
 
-// GET /api/triage/sessions — for doctor dashboard
+// GET /api/triage/sessions — for doctor dashboard and patient history
 router.get('/sessions', async (req, res, next) => {
   try {
-    const sessions = await Session.find({ status: 'completed' })
+    const { patientId } = req.query;
+    const query = { status: 'completed' };
+    if (patientId) {
+      query.patientId = patientId;
+    }
+    
+    const sessions = await Session.find(query)
       .sort({ createdAt: -1 })
       .limit(20);
     res.json({ success: true, data: sessions });

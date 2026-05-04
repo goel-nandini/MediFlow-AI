@@ -5,10 +5,19 @@ const Patient = require('../models/Patient');
 // @access  Private
 const getPatients = async (req, res, next) => {
   try {
-    const { search, priority, status, page = 1, limit = 20 } = req.query;
+    const { search, priority, status, page = 1, limit = 20, doctorId } = req.query;
 
     // Build filter
     const filter = { isActive: true };
+    if (doctorId) {
+      const mongoose = require('mongoose');
+      const Appointment = require('../models/Appointment');
+      const appts = await Appointment.find({ doctor: doctorId }).distinct('patient');
+      filter.$or = [
+        { assignedDoctor: doctorId },
+        { _id: { $in: appts } }
+      ];
+    }
     if (priority) filter.priority = priority;
     if (status)   filter.status   = status;
     if (search) {

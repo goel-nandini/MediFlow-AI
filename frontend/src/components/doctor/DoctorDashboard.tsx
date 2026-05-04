@@ -107,6 +107,8 @@ export default function Dashboard() {
       setLoading(true);
       setError('');
       try {
+        const params = doctorUser?.id ? { doctorId: doctorUser.id } : {};
+
         const [
           summaryRes,
           visitsRes,
@@ -115,12 +117,12 @@ export default function Dashboard() {
           doctorsRes,
           apptRes,
         ] = await Promise.allSettled([
-          dashboardApi.summary(),
-          dashboardApi.monthlyVisits(),
-          dashboardApi.caseDistribution(),
-          patientsApi.getAll(),
+          dashboardApi.summary(params),
+          dashboardApi.monthlyVisits(params),
+          dashboardApi.caseDistribution(params),
+          patientsApi.getAll(params),
           doctorsApi.getAll(),
-          appointmentsApi.getToday(),
+          appointmentsApi.getToday(params),
         ]);
 
         if (cancelled) return;
@@ -171,28 +173,12 @@ export default function Dashboard() {
       iconBg: '#e0f2fe', iconColor: '#0369a1', bar: '#5FA8D3',
     },
     {
-      label: "Today's Appointments",
-      value: summary ? String(summary.todayAppointments) : '—',
-      trend: '',
-      up: true,
-      icon: Calendar,
-      iconBg: '#dcfce7', iconColor: '#16a34a', bar: '#16A34A',
-    },
-    {
       label: 'Emergency Cases',
       value: summary ? String(summary.emergencyPatients) : '—',
       trend: '',
       up: false,
       icon: AlertTriangle,
       iconBg: '#fee2e2', iconColor: '#dc2626', bar: '#DC2626',
-    },
-    {
-      label: 'Available Doctors',
-      value: summary ? String(summary.availableDoctors) : '—',
-      trend: '',
-      up: true,
-      icon: Stethoscope,
-      iconBg: '#fef3c7', iconColor: '#b45309', bar: '#F59E0B',
     },
   ];
 
@@ -239,7 +225,6 @@ export default function Dashboard() {
           {[
             { val: summary ? String(summary.todayAppointments) : '—', label: "Today's Patients" },
             { val: summary ? String(summary.emergencyPatients) : '—', label: 'Emergencies'      },
-            { val: summary ? String(summary.availableDoctors)  : '—', label: 'Doctors On Duty'  },
           ].map(s => (
             <div key={s.label} style={{ textAlign: 'center' }}>
               <div className="wb-stat-val">{s.val}</div>
@@ -435,8 +420,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 4 ── Patient History Table + Today's Appointments */}
-      <div className="two-col animate-in">
+      {/* 4 ── Patient History Table */}
+      <div className="animate-in">
 
         {/* Patient History */}
         <div className="card">
@@ -537,108 +522,6 @@ export default function Dashboard() {
                 })}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Today's Appointments */}
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <div className="section-title">Today&apos;s Appointments</div>
-              <div className="section-sub">{appointments.length} scheduled</div>
-            </div>
-            <button className="btn btn-primary btn-sm" id="add-appointment-btn">
-              <Plus size={13} /> Book
-            </button>
-          </div>
-          <div className="appt-list">
-            {appointments.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                No appointments today.
-              </div>
-            ) : appointments.map((a, i) => {
-              const { hour, min } = parseApptTime(a.dateTime);
-              const priority = a.priority === 'emergency' ? 'emergency' : a.priority === 'warning' ? 'warning' : 'success';
-              const cfg = PRIORITY_CONFIG[priority];
-              return (
-                <div key={a._id || i} className="appt-item" id={`appt-${i}`}>
-                  <div className="appt-time">
-                    <div className="appt-time-hour">{hour}:{min}</div>
-                    <div className="appt-time-min">{parseInt(hour) < 12 ? 'AM' : 'PM'}</div>
-                  </div>
-                  <div className="appt-info">
-                    <div className="appt-name">{a.patientName || 'Patient'}</div>
-                    <div className="appt-type">{a.doctorName ? `Dr. ${a.doctorName.replace('Dr. ', '')}` : 'Doctor'} · {a.reason || 'Consultation'}</div>
-                    {/* Inline history preview */}
-                    {(a.patient?.conditions?.length > 0 || a.patient?.allergies) && (
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {a.patient?.conditions?.slice(0, 2).map((c: string, idx: number) => (
-                          <span key={idx} style={{ background: '#f1f5f9', padding: '1px 6px', borderRadius: 4 }}>{c}</span>
-                        ))}
-                        {a.patient?.allergies && <span style={{ color: '#dc2626' }}>⚠ Allergies</span>}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className={`badge ${cfg.cls}`}>
-                      <span className={`status-dot dot-${priority}`} />
-                      {cfg.label}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* 5 ── Available Doctors */}
-      <div className="two-col animate-in">
-        <div className="card" style={{ gridColumn: '1 / -1' }}>
-          <div className="card-header">
-            <div>
-              <div className="section-title">Available Doctors</div>
-              <div className="section-sub">Staff directory &amp; availability</div>
-            </div>
-            <button className="btn btn-primary btn-sm" id="book-all-btn">
-              <Plus size={13} /> New Booking
-            </button>
-          </div>
-          <div className="doctor-grid">
-            {doctors.length === 0 ? (
-              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                No doctors found.
-              </div>
-            ) : doctors.map((d, i) => (
-              <div key={d._id || i} className="doctor-item" id={`doctor-${i}`}>
-                <div className="avatar avatar-md" style={{ background: '#5FA8D3' }}>
-                  {(d.name || '?').split(' ').filter((_,j) => j < 2).map(n => n[0]).join('').toUpperCase()}
-                </div>
-                <div className="doctor-info">
-                  <div className="doctor-name">{d.name}</div>
-                  <div className="doctor-spec">
-                    {d.specialization} ·{' '}
-                    <span style={{ color: 'var(--primary)', fontWeight: 600 }}>
-                      {d.totalPatients ?? 0} Patients
-                    </span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                  <span className={`doctor-avail ${d.available ? 'avail-yes' : 'avail-no'}`}>
-                    {d.available ? '● Available' : '○ Busy'}
-                  </span>
-                  {d.available && (
-                    <button
-                      id={`book-dr-${i}`}
-                      className="btn btn-primary btn-sm"
-                      style={{ padding: '4px 12px', fontSize: '0.72rem' }}
-                    >
-                      Book
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>

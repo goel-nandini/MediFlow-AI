@@ -15,8 +15,11 @@ function getToken(): string | null {
   if (typeof window === "undefined") return null;
   // Use doctor token when on doctor portal pages, patient token otherwise
   const path = window.location.pathname;
-  if (path.startsWith("/demo/doctor")) {
+  if (path.startsWith("/demo/doctor") || path.startsWith("/doctor")) {
     return localStorage.getItem("mediflow_doctor_token") || localStorage.getItem("mediflow_token");
+  }
+  if (path.startsWith("/demo/admin") || path.startsWith("/admin")) {
+    return localStorage.getItem("mediflow_admin_token") || localStorage.getItem("mediflow_token");
   }
   return localStorage.getItem("mediflow_token");
 }
@@ -40,6 +43,7 @@ async function request<T>(
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers: { ...authHeaders(), ...extraHeaders },
+    cache: 'no-store',
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
 
@@ -264,8 +268,12 @@ export const appointmentsApi = {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return get<{ success: boolean; appointments: Appointment[] }>(`/api/appointments${qs}`);
   },
-  getToday: () =>
-    get<{ success: boolean; appointments: Appointment[] }>("/api/appointments/today"),
+  getToday: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return get<{ success: boolean; appointments: Appointment[] }>(`/api/appointments/today${qs}`);
+  },
+  getById: (id: string) => 
+    get<{ success: boolean; data: Appointment }>(`/api/appointments/${id}`),
   create: (data: Partial<Appointment>) =>
     post<{ success: boolean; appointment: Appointment }>("/api/appointments", data),
   update: (id: string, data: Partial<Appointment>) =>
@@ -277,10 +285,19 @@ export const appointmentsApi = {
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 
 export const dashboardApi = {
-  summary:          () => get<{ success: boolean; data: { stats: DashboardSummary } }>("/api/dashboard/summary"),
-  monthlyVisits:    () => get<{ success: boolean; data: MonthlyVisit[] }>("/api/dashboard/monthly-visits"),
-  caseDistribution: () => get<{ success: boolean; data: CaseDistribution[] }>("/api/dashboard/case-distribution"),
-  doctorLoad:       () => get<{ success: boolean; data: DoctorLoad[] }>("/api/dashboard/doctor-load"),
+  summary: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return get<{ success: boolean; data: { stats: DashboardSummary } }>(`/api/dashboard/summary${qs}`);
+  },
+  monthlyVisits: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return get<{ success: boolean; data: MonthlyVisit[] }>(`/api/dashboard/monthly-visits${qs}`);
+  },
+  caseDistribution: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return get<{ success: boolean; data: CaseDistribution[] }>(`/api/dashboard/case-distribution${qs}`);
+  },
+  doctorLoad: () => get<{ success: boolean; data: DoctorLoad[] }>("/api/dashboard/doctor-load"),
 };
 
 // ─── PROMPTS ──────────────────────────────────────────────────────────────────
@@ -289,3 +306,15 @@ export const promptsApi = {
   getAll:  ()                                    => get<{ success: boolean; prompts: Prompt[] }>("/api/prompts"),
   update:  (id: string, content: string)         => put<{ success: boolean; prompt: Prompt }>(`/api/prompts/${id}`, { content }),
 };
+
+// ── HEALTH HISTORY ────────────────────────────────────────────────────────────
+
+export const healthHistoryApi = {
+  getAll: (patientId: string) =>
+    get<{ success: boolean; data: any[] }>(`/api/health-history?patientId=${patientId}`),
+  create: (data: any) =>
+    post<{ success: boolean; data: any }>("/api/health-history", data),
+  update: (id: string, data: any) =>
+    put<{ success: boolean; data: any }>(`/api/health-history/${id}`, data),
+};
+

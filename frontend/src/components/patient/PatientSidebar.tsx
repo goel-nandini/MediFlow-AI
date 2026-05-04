@@ -5,7 +5,7 @@ import { LayoutDashboard, HeartPulse, BarChart2, Lightbulb, Bot, Calendar, Histo
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-export type PatientTab = "overview" | "health-summary" | "analytics" | "recommendations";
+export type PatientTab = "overview" | "health-summary" | "analytics" | "recommendations" | "my-doctors";
 
 interface NavItem {
   id: PatientTab | "chat" | "appointments" | "health-history";
@@ -19,6 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "overview", label: "Dashboard", icon: <LayoutDashboard size={18} />, route: "/demo/patient/dashboard" },
   { id: "chat", label: "AI Assistant", icon: <Bot size={18} />, route: "/demo/patient/ai-assistant" },
   { id: "appointments", label: "Appointments", icon: <Calendar size={18} />, route: "/demo/patient/appointments" },
+  { id: "my-doctors", label: "My Care Team", icon: <HeartPulse size={18} />, route: "/demo/patient/my-doctors" },
   { id: "health-history", label: "Health History", icon: <History size={18} />, route: "/demo/patient/history" },
   // { id: "health-summary",   label: "Health Summary",  icon: <HeartPulse size={18} />,         route: "/demo/patient/dashboard#ai-analysis-section" },
   // { id: "analytics",        label: "Analytics",       icon: <BarChart2 size={18} /> },
