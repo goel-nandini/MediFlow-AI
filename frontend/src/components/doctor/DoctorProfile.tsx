@@ -75,7 +75,7 @@ export default function DoctorProfile() {
                   {doctorUser.name}
                 </h1>
                 <p style={{ fontSize: '1rem', color: 'var(--primary)', fontWeight: 600, margin: '4px 0 0' }}>
-                  {doctorUser.specialization || 'General Physician'}
+                  {doctorUser.specialization || 'General Doctor'}
                 </p>
                 <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: 'var(--text-muted)' }}>

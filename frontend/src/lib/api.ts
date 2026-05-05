@@ -213,8 +213,19 @@ export const authApi = {
     consultationFee?: number;
   }) => post<AuthResponse>("/api/auth/register-doctor", data),
 
-  login: (data: { email: string; password: string }) =>
-    post<AuthResponse>("/api/auth/login", data),
+  login: (data: { email: string; password: string; platform?: string }) => {
+    // Determine platform based on current URL path if not provided
+    let platform = data.platform || 'patient';
+    if (!data.platform && typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (path.startsWith('/demo/doctor') || path.startsWith('/doctor')) {
+        platform = 'doctor';
+      } else if (path.startsWith('/demo/admin') || path.startsWith('/admin')) {
+        platform = 'admin';
+      }
+    }
+    return post<AuthResponse>("/api/auth/login", { email: data.email, password: data.password, platform });
+  },
 
   me: () => get<{ success: boolean; user: AuthResponse["user"] }>("/api/auth/me"),
 };

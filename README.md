@@ -224,7 +224,7 @@ Patient Input → AI Questions → Risk Evaluation → Decision → Action → D
 ## 🚀 Getting Started
 
 ```bash
-git clone https://github.com/your-username/mediflow-ai
+git clone https://github.com/Pratibha-Maurya23/MediFlow-AI.git
 
 cd backend
 npm install

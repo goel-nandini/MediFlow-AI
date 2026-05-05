@@ -95,7 +95,7 @@ export default function PatientAuthPage() {
         }));
         router.push("/demo/patient/dashboard");
       } else {
-        const res = await authApi.login({ email, password });
+        const res = await authApi.login({ email, password, platform: 'patient' });
         localStorage.setItem("mediflow_token", res.token);
         localStorage.setItem("mediflow_user", JSON.stringify(res.user));
         router.push("/demo/patient/dashboard");

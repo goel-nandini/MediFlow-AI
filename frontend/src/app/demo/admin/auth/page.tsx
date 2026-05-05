@@ -46,7 +46,7 @@ export default function AdminAuthPage() {
     setLoading(true);
 
     try {
-      const res = await authApi.login({ email, password });
+      const res = await authApi.login({ email, password, platform: 'admin' });
 
       if (res.user.role !== 'admin') {
          throw new Error("Access denied. Admin privileges required.");

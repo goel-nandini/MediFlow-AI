@@ -390,7 +390,7 @@ export default function PatientFormPage() {
           <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex gap-3 items-start mb-6">
             <Bot className="text-accent shrink-0 mt-0.5" size={18} />
             <p className="text-xs text-primary/70 leading-relaxed">
-              MediFlow AI will analyze your input using clinical triage protocols. Results are indicative only — always consult a qualified physician.
+              MediFlow AI will analyze your input using clinical triage protocols. Results are indicative only — always consult a qualified doctor.
             </p>
           </div>
 

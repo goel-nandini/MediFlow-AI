@@ -78,7 +78,7 @@ export default function DoctorAuthPage() {
           consultationFee: Number(consultationFee) || 0,
         });
       } else {
-        res = await authApi.login({ email, password });
+        res = await authApi.login({ email, password, platform: 'doctor' });
       }
 
       // Use doctor-specific keys to avoid overwriting patient session
@@ -103,7 +103,7 @@ export default function DoctorAuthPage() {
           </div>
 
           <h2 className="font-display text-2xl text-primary font-bold text-center mt-4">
-            {mode === "login" ? "Physician Sign In" : "Physician Registration"}
+            {mode === "login" ? "Doctor Sign In" : "Doctor Registration"}
           </h2>
           <p className="text-secondary text-sm text-center mt-1 leading-relaxed px-4">
             {mode === "login"

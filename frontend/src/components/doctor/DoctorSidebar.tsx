@@ -74,7 +74,7 @@ export default function Sidebar({ activePage, onNavigate }: { activePage: string
         </div>
         <div className="sidebar-user-info">
           <div className="sidebar-user-name">{doctorName}</div>
-          <div className="sidebar-user-role">{doctorSpec || 'Physician'}</div>
+          <div className="sidebar-user-role">{doctorSpec || 'Doctor'}</div>
         </div>
         <button
           onClick={handleLogout}

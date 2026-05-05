@@ -3,7 +3,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { User, Stethoscope, CheckCircle, ShieldCheck } from "lucide-react";
+import { User, Stethoscope, CheckCircle } from "lucide-react";
 import { PageContainer } from "../../components/ui/PageContainer";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
@@ -24,10 +24,12 @@ export default function DemoRoleSelection() {
     router.push("/demo/doctor/auth");
   };
 
+  /* 
   const handleAdminClick = () => {
     setRole("admin");
     router.push("/demo/admin/auth");
   };
+  */
 
   return (
     <>
@@ -44,7 +46,7 @@ export default function DemoRoleSelection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 w-full max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12 w-full max-w-4xl mx-auto">
           {/* Patient Card */}
           <Card hover padding="lg" onClick={handlePatientClick} className="relative">
             <div className="w-14 h-14 bg-bgLight rounded-2xl flex items-center justify-center mb-4">
@@ -97,7 +99,7 @@ export default function DemoRoleSelection() {
               Enter as Doctor / Clinic
             </h2>
             <p className="text-sm text-secondary mt-2 leading-relaxed">
-              Access the physician dashboard, patient queue, and AI-assisted triage management system.
+              Access the doctor dashboard, patient queue, and AI-assisted triage management system.
             </p>
 
             <div className="mt-4 space-y-2">
@@ -118,7 +120,7 @@ export default function DemoRoleSelection() {
           </Card>
 
           {/* Admin Card */}
-          <Card hover padding="lg" onClick={handleAdminClick} className="relative cursor-pointer">
+          {/* <Card hover padding="lg" onClick={handleAdminClick} className="relative cursor-pointer">
             <div className="w-14 h-14 bg-bgLight rounded-2xl flex items-center justify-center mb-4">
               <ShieldCheck className="text-accent" size={28} />
             </div>
@@ -151,7 +153,7 @@ export default function DemoRoleSelection() {
             }}>
               Admin Portal →
             </Button>
-          </Card>
+          </Card> */}
         </div>
 
         <p className="mt-10 text-center text-xs text-primary/40">
